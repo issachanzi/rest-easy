@@ -1,4 +1,4 @@
-package com.example.issachanzi.resteasy.model;
+package com.example.issachanzi.model;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;

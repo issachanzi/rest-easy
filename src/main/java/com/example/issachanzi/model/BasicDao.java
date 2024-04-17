@@ -1,4 +1,4 @@
-package com.example.issachanzi.resteasy.model;
+package com.example.issachanzi.model;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
