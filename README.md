@@ -1,6 +1,6 @@
 # Manifesto of Rest Easy
 
-## **No boilerplate**
+## **Banish boilerplate!**
 Rest Easy should require the absolute minimal code to implement basic functionality.
 
 The following code should be enough to implement a fully functional basic REST API.
