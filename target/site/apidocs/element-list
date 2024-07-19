@@ -1,0 +1,7 @@
+net.issachanzi.resteasy
+net.issachanzi.resteasy.controller
+net.issachanzi.resteasy.controller.exception
+net.issachanzi.resteasy.model
+net.issachanzi.resteasy.model.annotation
+net.issachanzi.resteasy.model.association
+net.issachanzi.resteasy.view

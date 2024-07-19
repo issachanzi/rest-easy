@@ -47,7 +47,9 @@ public class Loader {
         else if (file.getName().endsWith(".class")) {
             try {
                 result.addAll(loadClassFile(file, root));
-            } catch (ClassNotFoundException _) {}
+            } catch (ClassNotFoundException ex) {
+                ex.printStackTrace();
+            }
         }
 
         return result;

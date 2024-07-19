@@ -1,0 +1,63 @@
+@options
+@packages
+-classpath
+'/home/issa/.m2/repository/org/eclipse/jetty/jetty-server/12.0.10/jetty-server-12.0.10.jar:/home/issa/.m2/repository/org/eclipse/jetty/jetty-http/12.0.10/jetty-http-12.0.10.jar:/home/issa/.m2/repository/org/eclipse/jetty/jetty-util/12.0.10/jetty-util-12.0.10.jar:/home/issa/.m2/repository/org/eclipse/jetty/jetty-io/12.0.10/jetty-io-12.0.10.jar:/home/issa/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar:/home/issa/.m2/repository/org/eclipse/jetty/ee10/jetty-ee10-servlet/12.0.10/jetty-ee10-servlet-12.0.10.jar:/home/issa/.m2/repository/jakarta/servlet/jakarta.servlet-api/6.0.0/jakarta.servlet-api-6.0.0.jar:/home/issa/.m2/repository/org/eclipse/jetty/jetty-security/12.0.10/jetty-security-12.0.10.jar:/home/issa/.m2/repository/org/eclipse/jetty/jetty-session/12.0.10/jetty-session-12.0.10.jar:/home/issa/.m2/repository/jakarta/json/jakarta.json-api/2.1.3/jakarta.json-api-2.1.3.jar:/home/issa/.m2/repository/org/eclipse/parsson/parsson/1.1.3/parsson-1.1.3.jar:/home/issa/.m2/repository/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar'
+-encoding
+'UTF-8'
+-protected
+-source
+'17'
+-sourcepath
+'/home/issa/IdeaProjects/rest-easy/src/main/java'
+-author
+-bottom
+'Copyright &#169; 2024. All rights reserved.'
+-charset
+'UTF-8'
+-d
+'/home/issa/IdeaProjects/rest-easy/target/site/apidocs'
+-docencoding
+'UTF-8'
+-doctitle
+'rest-easy 0.0.1 API'
+-use
+-version
+-windowtitle
+'rest-easy 0.0.1 API'
+net.issachanzi.resteasy.view
+net.issachanzi.resteasy.model
+net.issachanzi.resteasy.model.annotation
+net.issachanzi.resteasy.model.association
+net.issachanzi.resteasy.controller.exception
+net.issachanzi.resteasy.controller
+net.issachanzi.resteasy
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-server/12.0.10/jetty-server-12.0.10.jar = 1717044202000
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-http/12.0.10/jetty-http-12.0.10.jar = 1717044113000
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-util/12.0.10/jetty-util-12.0.10.jar = 1717044051000
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-io/12.0.10/jetty-io-12.0.10.jar = 1717044079000
+/home/issa/.m2/repository/org/slf4j/slf4j-api/2.0.12/slf4j-api-2.0.12.jar = 1707168776000
+/home/issa/.m2/repository/org/eclipse/jetty/ee10/jetty-ee10-servlet/12.0.10/jetty-ee10-servlet-12.0.10.jar = 1717044723000
+/home/issa/.m2/repository/jakarta/servlet/jakarta.servlet-api/6.0.0/jakarta.servlet-api-6.0.0.jar = 1652339973000
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-security/12.0.10/jetty-security-12.0.10.jar = 1717044235000
+/home/issa/.m2/repository/org/eclipse/jetty/jetty-session/12.0.10/jetty-session-12.0.10.jar = 1717044224000
+/home/issa/.m2/repository/jakarta/json/jakarta.json-api/2.1.3/jakarta.json-api-2.1.3.jar = 1697805099000
+/home/issa/.m2/repository/org/eclipse/parsson/parsson/1.1.3/parsson-1.1.3.jar = 1689233151000
+/home/issa/.m2/repository/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar = 1718683643700
+/home/issa/IdeaProjects/rest-easy/src/main/java = 1721371157274
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/search.html = 1721373180673
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/tag-search-index.js = 1721373180647
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/index-all.html = 1721373180670
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/allpackages-index.html = 1721373180647
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/serialized-form.html = 1721373180560
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/member-search-index.js = 1721373180647
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/element-list = 1721373180503
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/help-doc.html = 1721373180677
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/overview-summary.html = 1721373180673
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/overview-tree.html = 1721373180627
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/module-search-index.js = 1721373180647
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/javadoc.sh = 1721373035438
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/allclasses-index.html = 1721373180643
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/type-search-index.js = 1721373180647
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/index.html = 1721373180630
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/constant-values.html = 1721373180550
+/home/issa/IdeaProjects/rest-easy/target/site/apidocs/package-search-index.js = 1721373180647
