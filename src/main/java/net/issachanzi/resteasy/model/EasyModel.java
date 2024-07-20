@@ -75,7 +75,10 @@ public abstract class EasyModel {
             InvocationTargetException,
             NoSuchMethodException,
             InstantiationException,
-            IllegalAccessException, SQLException {
+            IllegalAccessException,
+            SQLException,
+            HttpErrorStatus
+    {
         var reader = Json.createReader (new StringReader(json));
         var jsonObject = reader.readObject();
 
@@ -100,7 +103,8 @@ public abstract class EasyModel {
             InvocationTargetException,
             InstantiationException,
             IllegalAccessException,
-            SQLException
+            SQLException,
+            HttpErrorStatus
     {
         T model = clazz.getDeclaredConstructor().newInstance();
 
@@ -128,7 +132,7 @@ public abstract class EasyModel {
     protected void init(
             Connection db,
             JsonObject jsonObject
-    ) throws SQLException {
+    ) throws SQLException, HttpErrorStatus {
         var clazz = this.getClass();
 
         for (var field : persistentFields(this.getClass())) {
