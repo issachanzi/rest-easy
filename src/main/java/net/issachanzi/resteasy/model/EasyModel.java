@@ -699,7 +699,11 @@ public abstract class EasyModel {
      * @return {@code true} if the access is allowed. {@code false} if it is
      *         denied.
      */
-    public boolean authorize (String authorization, AccessType accessType) {
+    public boolean authorize (
+            Connection db,
+            String authorization,
+            AccessType accessType
+    ) {
         return true;
     }
 

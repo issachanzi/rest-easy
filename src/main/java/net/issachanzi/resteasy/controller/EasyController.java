@@ -40,7 +40,11 @@ public class EasyController implements Controller {
     public String get(String authorization) throws HttpErrorStatus {
         try {
             var models = EasyModel.all(db, modelClazz).stream().filter(
-                    model -> model.authorize(authorization, AccessType.READ)
+                    model -> model.authorize(
+                            db,
+                            authorization,
+                            AccessType.READ
+                    )
             ).collect(Collectors.toList());
 
             return new EasyView(models).toString();
@@ -62,6 +66,7 @@ public class EasyController implements Controller {
         try {
             var models = EasyModel.where(db, params, modelClazz)
                     .stream().filter(model -> model.authorize(
+                            db,
                             authorization,
                             AccessType.READ
                     )).collect(Collectors.toList());
@@ -78,7 +83,7 @@ public class EasyController implements Controller {
         try {
             var model = EasyModel.byId(db, id, modelClazz);
 
-            if (!model.authorize(authorization, AccessType.READ)) {
+            if (!model.authorize(db, authorization, AccessType.READ)) {
                 throw new Forbidden();
             }
 
@@ -94,7 +99,7 @@ public class EasyController implements Controller {
         try {
             var model = EasyModel.fromJson(db, body, modelClazz);
 
-            if (!model.authorize(authorization, AccessType.CREATE)) {
+            if (!model.authorize(db, authorization, AccessType.CREATE)) {
                 throw new Forbidden();
             }
 
@@ -140,7 +145,7 @@ public class EasyController implements Controller {
         try {
             var model = EasyModel.byId(db, id, modelClazz);
 
-            if (!model.authorize(authorization, AccessType.DELETE)) {
+            if (!model.authorize(db, authorization, AccessType.DELETE)) {
                 throw new Forbidden();
             }
 
