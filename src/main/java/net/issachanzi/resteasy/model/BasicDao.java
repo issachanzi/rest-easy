@@ -89,7 +89,7 @@ public class BasicDao {
         var params = new Object[] {id.toString()};
         var results = this.where(whereSql, params);
 
-        return results.stream().toList().getFirst();
+        return results.stream().findFirst().get();
     }
 
     /**

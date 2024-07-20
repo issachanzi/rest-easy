@@ -521,6 +521,8 @@ public abstract class EasyModel {
             Connection db,
             Class <? extends EasyModel> clazz
     ) {
+        setupHttpFields(clazz);
+
         BasicDao dao = new BasicDao(
                 db,
                 clazz.getSimpleName(),
@@ -595,7 +597,10 @@ public abstract class EasyModel {
         // TODO implement authorisation
         for (var field : httpFields()) {
             try {
-                var fieldValue = httpFields.get(this).get(field).get(this);
+                var fieldValue = httpFields
+                        .get(this.getClass())
+                        .get(field)
+                        .get(this);
                 result.put(field.getName(), fieldValue);
             } catch (HttpErrorStatus ignored) { }
         }

@@ -66,7 +66,7 @@ public class HttpField <T> {
      * @throws HttpErrorStatus If a custom getter throws an exception
      */
     public void set (EasyModel model, Object value) throws HttpErrorStatus {
-        setter.set (model, value);
+        setter.set (model, (T) value);
     }
 
     /**

@@ -42,4 +42,12 @@ public class Model extends EasyModel {
     public ImplicitOneToOne implicitOneToOne;
     public ImplicitOneToMany [] implicitOneToMany;
 
+    public void string (String string) {
+        this.string = "Custom setter - " + string;
+    }
+
+    public String string () {
+        return "Custom getter - " + this.string;
+    }
+
 }
