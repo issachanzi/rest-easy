@@ -7,11 +7,14 @@ import java.sql.*;
 import java.util.*;
 import java.sql.Date;
 
+import net.issachanzi.resteasy.controller.exception.HttpErrorStatus;
 import net.issachanzi.resteasy.model.annotation.NoHttp;
 import net.issachanzi.resteasy.model.annotation.NoPersist;
 import net.issachanzi.resteasy.model.association.Association;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+
+import static net.issachanzi.resteasy.model.HttpField.isPublic;
 
 /**
  * Base class for a model in a Rest Easy application
@@ -42,6 +45,8 @@ import jakarta.json.JsonObject;
 public abstract class EasyModel {
     private static Map <Class <? extends EasyModel>, Association[]> associations
             = new HashMap <> ();
+    private static Map <Class <? extends EasyModel>, Map <Field, HttpField <?>>>
+            httpFields = new HashMap<>();
 
     /**
      * An ID field as a primary key for the database table.
@@ -99,7 +104,10 @@ public abstract class EasyModel {
 
         for (var field : persistentFields(clazz)) {
             if (jsonObject.containsKey(field.getName())) {
-                field.set(model, fieldFromJson(db, jsonObject, field));
+                var httpField = httpFields.get(clazz).get(field);
+                try {
+                    httpField.set(model, fieldFromJson(db, jsonObject, field));
+                } catch (HttpErrorStatus ignored) {}
             }
         }
 
@@ -197,10 +205,10 @@ public abstract class EasyModel {
                         fieldType
                 );
 
-                field.set(this, fieldValue);
-            } catch (NoSuchFieldException | IllegalAccessException ex) {
-                continue;
-            }
+                var httpField = httpFields.get(this.getClass()).get(field);
+                httpField.set(this, fieldValue);
+            } catch (NoSuchFieldException |
+                     HttpErrorStatus ignored) {}
         }
     }
 
@@ -582,19 +590,46 @@ public abstract class EasyModel {
      * @return A Map of fields in this model with their values
      */
     public Map <String, Object> httpFieldValues (String authorization) {
-        try {
-            Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
 
-            // TODO implement authorisation
-            for (var field : httpFields()) {
-                result.put(field.getName(), field.get(this));
-            }
-
-            return result;
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+        // TODO implement authorisation
+        for (var field : httpFields()) {
+            try {
+                var fieldValue = httpFields.get(this).get(field).get(this);
+                result.put(field.getName(), fieldValue);
+            } catch (HttpErrorStatus ignored) { }
         }
+
+        return result;
     }
+
+    private static void setupHttpFields (Class <? extends EasyModel> clazz) {
+        Map <Field, HttpField <?>> httpFields = new HashMap<>();
+
+        var publicFields = clazz.getFields();
+        for (var field : publicFields) {
+            var httpField = HttpField.forField(clazz, field, field.getType());
+
+            if (httpField.canGet() || httpField.canSet()) {
+                httpFields.put(field, httpField);
+            }
+        }
+
+        var declaredFields = clazz.getDeclaredFields();
+        for (var field : declaredFields) {
+            if (!isPublic (field)) {
+                var httpField = HttpField.forField(clazz, field, field.getType());
+
+                if (httpField.canGet() || httpField.canSet()) {
+                    httpFields.put(field, httpField);
+                }
+            }
+        }
+
+        EasyModel.httpFields.put(clazz, httpFields);
+    }
+
+
 
     private Collection <Field> httpFields () {
         return httpFields(this.getClass());
