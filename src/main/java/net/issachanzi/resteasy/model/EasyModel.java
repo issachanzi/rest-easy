@@ -703,7 +703,7 @@ public abstract class EasyModel {
             Connection db,
             String authorization,
             AccessType accessType
-    ) {
+    ) throws HttpErrorStatus {
         return true;
     }
 

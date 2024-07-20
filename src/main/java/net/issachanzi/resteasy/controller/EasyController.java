@@ -40,11 +40,17 @@ public class EasyController implements Controller {
     public String get(String authorization) throws HttpErrorStatus {
         try {
             var models = EasyModel.all(db, modelClazz).stream().filter(
-                    model -> model.authorize(
-                            db,
-                            authorization,
-                            AccessType.READ
-                    )
+                    model -> {
+                        try {
+                            return model.authorize(
+                                    db,
+                                    authorization,
+                                    AccessType.READ
+                            );
+                        } catch (HttpErrorStatus e) {
+                            return false;
+                        }
+                    }
             ).collect(Collectors.toList());
 
             return new EasyView(models).toString();
@@ -65,11 +71,17 @@ public class EasyController implements Controller {
     ) throws HttpErrorStatus {
         try {
             var models = EasyModel.where(db, params, modelClazz)
-                    .stream().filter(model -> model.authorize(
-                            db,
-                            authorization,
-                            AccessType.READ
-                    )).collect(Collectors.toList());
+                    .stream().filter(model -> {
+                        try {
+                            return model.authorize(
+                                    db,
+                                    authorization,
+                                    AccessType.READ
+                            );
+                        } catch (HttpErrorStatus e) {
+                            return false;
+                        }
+                    }).collect(Collectors.toList());
 
             return new EasyView(models).toString();
         } catch (SQLException e) {
