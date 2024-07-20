@@ -99,19 +99,46 @@ public abstract class EasyModel {
             NoSuchMethodException,
             InvocationTargetException,
             InstantiationException,
-            IllegalAccessException, SQLException {
+            IllegalAccessException,
+            SQLException
+    {
         T model = clazz.getDeclaredConstructor().newInstance();
 
-        for (var field : persistentFields(clazz)) {
+        model.init(db, jsonObject);
+
+        return model;
+    }
+
+    /**
+     * Initialises a newly created model instance.
+     *
+     * <p>
+     *     Override this method to create custom init behaviour.
+     * </p>
+     *
+     * <p>
+     *     The default implementation populates all the fields in the model
+     *     with values from the request body.
+     * </p>
+     *
+     * @param db Database connection to use
+     * @param jsonObject Request body parsed as JSON
+     * @throws SQLException If a query fails
+     */
+    protected void init(
+            Connection db,
+            JsonObject jsonObject
+    ) throws SQLException {
+        var clazz = this.getClass();
+
+        for (var field : persistentFields(this.getClass())) {
             if (jsonObject.containsKey(field.getName())) {
                 var httpField = httpFields.get(clazz).get(field);
                 try {
-                    httpField.set(model, fieldFromJson(db, jsonObject, field));
+                    httpField.set(this, fieldFromJson(db, jsonObject, field));
                 } catch (HttpErrorStatus ignored) {}
             }
         }
-
-        return model;
     }
 
     /**
