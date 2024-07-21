@@ -284,7 +284,7 @@ public class BasicDao {
 
         return mapJoin(columnNames, mapFunc, separator);
     }
-    private static String escape(String identifier) {
+    public static String escape(String identifier) {
         return "\"" + identifier + "\"";
     }
 }

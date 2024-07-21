@@ -5,6 +5,8 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.Vector;
 
+import static net.issachanzi.resteasy.model.BasicDao.escape;
+
 /**
  * Data access object for performing database queries on many-to-many
  * associations.
@@ -37,10 +39,10 @@ public class JoinTableDao {
         this.otherModelName = otherModelName;
 
         if (thisModelName.compareTo(otherModelName) < 0) {
-            this.tableName = thisModelName + otherModelName;
+            this.tableName = escape (thisModelName + otherModelName);
         }
         else {
-            this.tableName = otherModelName + thisModelName;
+            this.tableName = escape (otherModelName + thisModelName);
         }
     }
 
@@ -51,8 +53,8 @@ public class JoinTableDao {
      */
     public void init () throws SQLException {
         String sql  = "CREATE TABLE IF NOT EXISTS " + tableName + " ( "
-                    +   "" + thisModelName + " char(36), "
-                    +   "" + otherModelName + " char(36) "
+                    +   "" + escape (thisModelName) + " char(36), "
+                    +   "" + escape (otherModelName) + " char(36) "
                     + ")";
 
         var query = db.createStatement();
@@ -71,9 +73,9 @@ public class JoinTableDao {
      * @throws SQLException If a query fails
      */
     public UUID [] getAssociations (UUID thisId) throws SQLException {
-        String sql  = "SELECT " + otherModelName + " "
+        String sql  = "SELECT " + escape (otherModelName) + " "
                     + "FROM " + tableName + " "
-                    + "WHERE " + thisModelName + " = ?";
+                    + "WHERE " + escape (thisModelName) + " = ?";
 
         var query = db.prepareStatement(sql);
         query.setObject(1, idString(thisId));
@@ -103,7 +105,7 @@ public class JoinTableDao {
      */
     public void clearAssociations (UUID thisId) throws SQLException {
         String sql  = "DELETE FROM " + tableName + " "
-                    + "WHERE " + thisModelName + " = ?";
+                    + "WHERE " + escape (thisModelName) + " = ?";
 
         var query = db.prepareStatement(sql);
         query.setObject(1, idString(thisId));
@@ -123,7 +125,10 @@ public class JoinTableDao {
      */
     public void addAssociation (UUID thisId, UUID otherId) throws SQLException {
         String sql  = "INSERT INTO " + tableName + " "
-                    + "(" + thisModelName + ", " + otherModelName + ") "
+                    + "("
+                    +   escape (thisModelName) + ", "
+                    +   escape (otherModelName)
+                    + ") "
                     + "VALUES (?, ?)";
 
         var query = db.prepareStatement(sql);

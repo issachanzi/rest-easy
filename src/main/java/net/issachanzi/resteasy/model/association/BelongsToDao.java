@@ -6,6 +6,8 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.Vector;
 
+import static net.issachanzi.resteasy.model.BasicDao.escape;
+
 /**
  * Data access object for performing database queries on associations where one side
  * of the association is a {@link BelongsTo} association.
@@ -29,8 +31,8 @@ public class BelongsToDao {
      */
     public BelongsToDao(Connection db, String tableName, String columnName) {
         this.db = db;
-        this.tableName = tableName;
-        this.columnName = columnName;
+        this.tableName = escape (tableName);
+        this.columnName = escape (columnName);
     }
 
     /**
