@@ -37,7 +37,7 @@ public class BasicDao {
             Map<String, String> columnTypes
     ) {
         this.db = db;
-        this.tableName = "\"" + tableName + "\"";
+        this.tableName = escape(tableName);
         this.columnTypes = columnTypes;
     }
 
@@ -50,7 +50,7 @@ public class BasicDao {
      */
     public void createTable() throws SQLException {
         String columns = mapJoinColumns(
-                colName -> colName + " " + columnTypes.get(colName),
+                colName -> escape (colName) + " " + columnTypes.get(colName),
                 ", "
         );
 
@@ -118,11 +118,10 @@ public class BasicDao {
         List<String> columns = filter
                 .keySet()
                 .stream()
-                .map(colName -> "\"" + colName + "\"")
                 .toList();
         String whereSql = mapJoin(
                 columns,
-                colName -> colName + " = ?",
+                colName -> escape (colName) + " = ?",
                 " AND "
         );
         Object[] params = map(columns, filter::get).toArray();
@@ -189,7 +188,7 @@ public class BasicDao {
      */
     public void insert (Map<String, Object> values) throws SQLException {
         List<String> columns = values.keySet().stream().toList();
-        String columnsSql = mapJoin(columns, k -> k, ", ");
+        String columnsSql = mapJoin(columns, BasicDao::escape, ", ");
         String valuesSql = mapJoin(values.keySet(), k -> "?", ", ");
         String sql  = "INSERT INTO " + tableName + " (" + columnsSql + ") "
                     + "VALUES (" + valuesSql + ");";
@@ -219,7 +218,7 @@ public class BasicDao {
         List<String> columns = values.keySet().stream().toList();
         String setSql = mapJoin(
                 columns,
-                colName -> colName + " = " + values.get(colName),
+                colName -> escape (colName) + " = " + values.get(colName),
                 ", "
         );
         String sql  = "UPDATE " + tableName + " "
@@ -253,6 +252,7 @@ public class BasicDao {
 
     @FunctionalInterface
     interface MapFunc<I, O> {
+
         O map (I i);
     }
     private <I, O> List<O> map (Collection<I> collection, MapFunc<I, O> mapFunc) {
@@ -280,9 +280,11 @@ public class BasicDao {
         List<String> columnNames = columnTypes
                 .keySet ()
                 .stream ()
-                .map (colName -> "\"" + colName + "\"")
                 .toList ();
 
         return mapJoin(columnNames, mapFunc, separator);
+    }
+    private static String escape(String identifier) {
+        return "\"" + identifier + "\"";
     }
 }
