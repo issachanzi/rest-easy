@@ -37,7 +37,7 @@ public class BasicDao {
             Map<String, String> columnTypes
     ) {
         this.db = db;
-        this.tableName = tableName;
+        this.tableName = "\"" + tableName + "\"";
         this.columnTypes = columnTypes;
     }
 
@@ -58,6 +58,8 @@ public class BasicDao {
                     + "(" + columns + ");";
 
         Statement query = db.createStatement();
+
+        System.out.println(sql);
         query.execute(sql);
         System.out.println (sql);
     }
@@ -113,7 +115,11 @@ public class BasicDao {
     public Collection<Map<String, Object>> where (
             Map<String, Object> filter
     ) throws SQLException {
-        List<String> columns = filter.keySet().stream().toList();
+        List<String> columns = filter
+                .keySet()
+                .stream()
+                .map(colName -> "\"" + colName + "\"")
+                .toList();
         String whereSql = mapJoin(
                 columns,
                 colName -> colName + " = ?",
@@ -271,7 +277,11 @@ public class BasicDao {
             MapFunc<String, String> mapFunc,
             String separator
     ) {
-        List<String> columnNames = columnTypes.keySet().stream().toList();
+        List<String> columnNames = columnTypes
+                .keySet ()
+                .stream ()
+                .map (colName -> "\"" + colName + "\"")
+                .toList ();
 
         return mapJoin(columnNames, mapFunc, separator);
     }
