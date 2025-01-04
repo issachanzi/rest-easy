@@ -26,7 +26,7 @@ public class BelongsTo extends Association {
         this.field = field;
 
         this.tableName = clazz.getSimpleName();
-        this.columnName = field.getType().getSimpleName();
+        this.columnName = field.getName();
 
         if (! EasyModel.class.isAssignableFrom(field.getType())) {
             throw new IllegalArgumentException(
