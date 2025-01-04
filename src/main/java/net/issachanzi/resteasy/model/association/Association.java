@@ -1,10 +1,17 @@
 package net.issachanzi.resteasy.model.association;
 
 import net.issachanzi.resteasy.model.EasyModel;
+import net.issachanzi.resteasy.model.annotation.NoPersist;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Vector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A connection between two EasyModel classes, based on a field in one or both
@@ -139,14 +146,34 @@ public abstract class Association {
             Field field
     ) {
         var otherClazz = field.getType();
-        var otherClazzFields = otherClazz.getFields();
+        if (otherClazz.isArray()) {
+            otherClazz = otherClazz.componentType();
+        }
+        var otherClazzFields = getFields(otherClazz);
 
         for (var f : otherClazzFields) {
-            if (field.getType () == clazz || f.getType().arrayType() == clazz) {
+            if (f.getType () == clazz || f.getType().componentType() == clazz) {
                 return f;
             }
         }
 
         return null;
+    }
+
+    private static Field[] getFields(Class<?> otherClazz) {
+        var publicFields = otherClazz.getFields();
+        var privateFields = Arrays.stream(otherClazz.getDeclaredFields())
+                .filter(field -> (field.getModifiers() & Modifier.PUBLIC) == 0);
+        var fields = Stream.concat(Arrays.stream(publicFields), privateFields)
+                .filter(field -> Arrays.stream(field.getAnnotations())
+                        .noneMatch(
+                                annotation
+                                        -> annotation.annotationType()
+                                        == NoPersist.class
+                        )
+                )
+                .toList()
+                .toArray(new Field [0]);
+        return fields;
     }
 }

@@ -1,8 +1,8 @@
 package net.issachanzi.resteasy.model;
 
-import java.sql.Date;
-import java.sql.Time;
-import java.sql.Timestamp;
+import jakarta.json.JsonObject;
+
+import java.sql.*;
 import java.util.UUID;
 
 /**
@@ -104,13 +104,13 @@ public class SqlDatatypes {
             return (T) Double.valueOf(string);
         }
         else if (type == Date.class) {
-            return (T) Date.valueOf(string);
+            return (T) new Date (Long.valueOf(string));
         }
         else if (type == Time.class) {
-            return (T) Time.valueOf(string);
+            return (T) new Time (Long.valueOf(string));
         }
         else if (type == Timestamp.class) {
-            return (T) Timestamp.valueOf(string);
+            return (T) new Timestamp(Long.valueOf(string));
         }
         else {
             return null;
@@ -133,8 +133,85 @@ public class SqlDatatypes {
         if (EasyModel.class.isAssignableFrom(type)) {
             return type.getSimpleName();
         }
-        else {
+        else if (type == UUID.class) {
+            return "text";
+        } else if (type == String.class) {
+            return "text";
+        } else if (type == boolean.class || type == Boolean.class) {
+            return "checkbox";
+        }
+        else if (type == int.class || type == Integer.class) {
+            return "number";
+        } else if (type == long.class || type == Long.class) {
+            return "number";
+        } else if (type == float.class || type == Float.class) {
+            return "number";
+        } else if (type == double.class || type == Double.class) {
+            return "number";
+        } else if (type == Date.class) {
+            return "date";
+        } else if (type == Time.class) {
+            return "time";
+        } else if (type == Timestamp.class) {
+            return "datetime-local";
+        } else {
             return null;
         }
+    }
+
+    public static Object objectFromJson(
+            String fieldName,
+            Class<?> type,
+            Connection db,
+            JsonObject jsonObject
+    ) throws SQLException {
+        if (type == UUID.class) {
+            return UUID.fromString(jsonObject.getString(fieldName));
+        }
+        else if (type == String.class) {
+            return jsonObject.getString(fieldName);
+        }
+        else if (type == boolean.class || type == Boolean.class) {
+            return jsonObject.getBoolean(fieldName);
+        }
+        else if (type == byte.class || type == Byte.class) {
+            return (byte) jsonObject.getInt(fieldName);
+        }
+        else if (type == short.class || type == Short.class) {
+            return (short) jsonObject.getInt(fieldName);
+        }
+        else if (type == int.class || type == Integer.class) {
+            return jsonObject.getInt(fieldName);
+        }
+        else if (type == long.class || type == Long.class) {
+            return jsonObject.getJsonNumber(fieldName).longValue();
+        }
+        else if (type == float.class || type == Float.class) {
+            return (float) jsonObject.getJsonNumber(fieldName).doubleValue();
+        }
+        else if (type == double.class || type == Double.class) {
+            return jsonObject.getJsonNumber(fieldName).doubleValue();
+        }
+        else if (type == Date.class) {
+            return new Date(jsonObject.getJsonNumber(fieldName).longValue());
+        }
+        else if (type == Time.class) {
+            return new Time(jsonObject.getJsonNumber(fieldName).longValue());
+        }
+        else if (type == Timestamp.class) {
+            return new Timestamp(jsonObject.getJsonNumber(fieldName).longValue());
+        }
+        if (EasyModel.class.isAssignableFrom(type)) {
+            return EasyModel.byId(
+                    db,
+                    UUID.fromString(jsonObject.getString(fieldName)),
+                    (Class<? extends EasyModel>) type
+            );
+        }
+        else if (jsonObject.isNull(fieldName)) {
+            return null;
+        }
+
+        throw new IllegalArgumentException("Unsupported type " + type.getName());
     }
 }

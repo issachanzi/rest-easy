@@ -1,6 +1,7 @@
 package net.issachanzi.resteasy.model;
 
 import net.issachanzi.resteasy.controller.exception.HttpErrorStatus;
+import net.issachanzi.resteasy.model.annotation.NoHttp;
 
 import java.lang.reflect.*;
 
@@ -15,6 +16,8 @@ import java.lang.reflect.*;
  * @param <T> The type of the field
  */
 public class HttpField <T> {
+    private final String name;
+    private final Class <?> type;
     private final Getter <T> getter;
     private final Setter <T> setter;
 
@@ -24,9 +27,24 @@ public class HttpField <T> {
      * @param getter A function to get the value of the field
      * @param setter A function to set the value of the field
      */
-    public HttpField (Getter <T> getter, Setter <T> setter) {
+    public HttpField (
+            String name,
+            Class<?> type,
+            Getter <T> getter,
+            Setter <T> setter
+    ) {
+        this.name = name;
+        this.type = type;
         this.getter = getter;
         this.setter = setter;
+    }
+
+    public String name() {
+        return this.name;
+    }
+
+    public Class<?> type() {
+        return this.type;
     }
 
     /**
@@ -120,10 +138,12 @@ public class HttpField <T> {
             throw new IllegalArgumentException();
         }
 
+        String name = field.getName();
+        Class<?> type = field.getType();
         Getter <T> getter = findGetter (clazz, field, fieldType);
         Setter <T> setter = findSetter (clazz, field, fieldType);
 
-        return new HttpField<T>(getter, setter);
+        return new HttpField<T>(name, type, getter, setter);
     }
 
     @SuppressWarnings("unchecked")
@@ -221,7 +241,7 @@ public class HttpField <T> {
                 + methodNameRecord.substring(0, 1)
                 .toUpperCase()
                 + methodNameRecord.substring(1);
-        Setter <T> result = null;
+        Setter <T> result;
 
         Method method = null;
         try {
@@ -242,7 +262,10 @@ public class HttpField <T> {
             catch (NoSuchMethodException ignored) {}
         }
 
-        if (method != null) {
+        if (field.getAnnotation(NoHttp.class) != null) {
+            result = null;
+        }
+        else if (method != null) {
             Method finalMethod = method;
             result = (model, value) -> {
                 try {
@@ -264,7 +287,7 @@ public class HttpField <T> {
             };
         }
         else {
-            return null;
+            result = null;
         }
 
         return result;

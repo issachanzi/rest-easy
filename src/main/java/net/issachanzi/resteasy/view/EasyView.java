@@ -3,6 +3,9 @@ package net.issachanzi.resteasy.view;
 import net.issachanzi.resteasy.model.EasyModel;
 
 import java.lang.reflect.Array;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.Collection;
 
 import jakarta.json.Json;
@@ -93,6 +96,15 @@ public class EasyView {
         }
         else if (EasyModel.class.isAssignableFrom(value.getClass())) {
             jsonValue = Json.createValue(((EasyModel) value).id.toString());
+        }
+        else if (value instanceof Date) {
+            jsonValue = Json.createValue(((Date) value).getTime());
+        }
+        else if (value instanceof Time) {
+            jsonValue = Json.createValue(((Time) value).getTime());
+        }
+        else if (value instanceof Timestamp) {
+            jsonValue = Json.createValue(((Timestamp) value).getTime());
         }
         else {
             jsonValue = Json.createValue (value.toString());

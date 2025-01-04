@@ -28,11 +28,15 @@ public abstract class HttpErrorStatus extends Exception {
     public HttpErrorStatus(int statusCode, String message, Throwable cause) {
         super(message, cause);
         this.statusCode = statusCode;
+
+        cause.printStackTrace();
     }
 
     public HttpErrorStatus(int statusCode, Throwable cause) {
         super(cause);
         this.statusCode = statusCode;
+
+        cause.printStackTrace();
     }
 
     public HttpErrorStatus(
@@ -44,6 +48,8 @@ public abstract class HttpErrorStatus extends Exception {
     ) {
         super(message, cause, enableSuppression, writableStackTrace);
         this.statusCode = statusCode;
+
+        cause.printStackTrace();
     }
 
     public int statusCode() {

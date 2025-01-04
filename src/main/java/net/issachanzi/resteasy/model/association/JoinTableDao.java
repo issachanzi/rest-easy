@@ -39,10 +39,10 @@ public class JoinTableDao {
         this.otherModelName = otherModelName;
 
         if (thisModelName.compareTo(otherModelName) < 0) {
-            this.tableName = escape (thisModelName + otherModelName);
+            this.tableName = escape ((thisModelName + "_" + otherModelName));
         }
         else {
-            this.tableName = escape (otherModelName + thisModelName);
+            this.tableName = escape ((otherModelName + "_" + thisModelName));
         }
     }
 

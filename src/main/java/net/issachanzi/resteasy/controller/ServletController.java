@@ -45,6 +45,9 @@ public class ServletController extends HttpServlet {
         UUID id = getId(request);
         Map<String, String> query = getQuery(request);
 
+        var origin = request.getHeader("Origin");
+        response.addHeader("Access-Control-Allow-Origin", origin);
+
         try {
             String authorization = request.getHeader("Authorization");
             String responseContent = controller.get(id, query, authorization);
@@ -63,6 +66,9 @@ public class ServletController extends HttpServlet {
         UUID id = getId(request);
         String methodName = getPathParam(request, 1);
         String body = getBody(request);
+
+        var origin = request.getHeader("Origin");
+        response.addHeader("Access-Control-Allow-Origin", origin);
 
         try {
             String authorization = request.getHeader("Authorization");
@@ -88,6 +94,9 @@ public class ServletController extends HttpServlet {
         UUID id = getId(request);
         String body = getBody(request);
 
+        var origin = request.getHeader("Origin");
+        response.addHeader("Access-Control-Allow-Origin", origin);
+
         try {
             String authorization = request.getHeader("Authorization");
             controller.put(id, body, authorization);
@@ -106,6 +115,9 @@ public class ServletController extends HttpServlet {
     ) {
         UUID id = getId(request);
 
+        var origin = request.getHeader("Origin");
+        response.addHeader("Access-Control-Allow-Origin", origin);
+
         try {
             String authorization = request.getHeader("Authorization");
             controller.delete(id, authorization);
@@ -115,6 +127,25 @@ public class ServletController extends HttpServlet {
             sendError(response, errorStatus);
         }
 
+    }
+
+    @Override
+    public void doOptions (
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        var requestMethod = request.getHeader("Access-Control-Request-Method");
+        var requestHeaders = request.getHeader("Access-Control-Request-Headers");
+        var origin = request.getHeader("Origin");
+
+        response.addHeader("Access-Control-Allow-Origin", origin);
+        response.addHeader(
+                "Access-Control-Allow-Methods",
+                "OPTIONS, GET, POST, PUT, PATCH, DELETE"
+        );
+        response.addHeader("Access-Control-Allow-Headers", requestHeaders);
+
+        response.setStatus(204);
     }
 
     private static void sendError(

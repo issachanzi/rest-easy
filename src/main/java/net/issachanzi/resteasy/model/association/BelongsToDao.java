@@ -132,7 +132,7 @@ public class BelongsToDao {
         var result = query.executeQuery();
 
         if (result.next()) {
-            String uuidStr = result.getString(columnName);
+            String uuidStr = result.getString(columnName.substring(1, columnName.length() - 1));
 
             return uuidFromString(uuidStr);
         }

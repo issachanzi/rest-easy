@@ -58,7 +58,9 @@ public class BelongsTo extends Association {
                         chainSource
                 );
 
+                field.setAccessible(true);
                 field.set(model, value);
+                field.setAccessible(false);
             } catch (IllegalAccessException | ClassCastException e) {
                 throw new RuntimeException(e);
             }
@@ -70,7 +72,9 @@ public class BelongsTo extends Association {
         var dao = getDao(db);
 
         try {
+            field.setAccessible(true);
             var value = (EasyModel) field.get(model);
+            field.setAccessible(false);
 
             if (value != null) {
                 dao.setForeignByPrimary(model.id, value.id);

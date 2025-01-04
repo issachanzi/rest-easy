@@ -26,7 +26,7 @@ public class HasAndBelongsToMany extends Association {
         this.field = field;
 
         this.thisModelName = clazz.getSimpleName();
-        this.otherModelName = field.getType().getSimpleName();
+        this.otherModelName = field.getType().componentType().getSimpleName();
 
         if (!EasyModel.class.isAssignableFrom(field.getType().componentType())) {
             throw new IllegalArgumentException(
