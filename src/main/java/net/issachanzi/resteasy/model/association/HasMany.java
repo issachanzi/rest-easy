@@ -28,7 +28,7 @@ public class HasMany extends Association {
     public HasMany(Class <? extends EasyModel> clazz, Field field) {
         this.field = field;
 
-        this.tableName = field.getType().componentType().getSimpleName();
+        this.tableName = getOtherType(field).getSimpleName();
         this.columnName = Arrays.stream(
             field.getType().getFields()
         )
@@ -37,7 +37,7 @@ public class HasMany extends Association {
             .map (Field::getName)
             .orElse(clazz.getSimpleName());
 
-        if (!EasyModel.class.isAssignableFrom(field.getType().componentType())) {
+        if (!EasyModel.class.isAssignableFrom(getOtherType (field))) {
             throw new IllegalArgumentException(
                     "Field must be a subclass of EasyModel"
             );

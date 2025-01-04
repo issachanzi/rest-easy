@@ -47,6 +47,27 @@ public class JoinTableDao {
     }
 
     /**
+     * Construct a DAO for querying a specific pair of associations
+     *
+     * @param db The database connection to use
+     * @param thisModelName The name the model to query associations of
+     * @param otherModelName The name of the other model in the association
+     * @param tableName The name of the join table to create
+     */
+    public JoinTableDao(
+            Connection db,
+            String thisModelName,
+            String otherModelName,
+            String tableName
+    ) {
+        this.db = db;
+        this.thisModelName = thisModelName;
+        this.otherModelName = otherModelName;
+
+        this.tableName = escape(tableName);
+    }
+
+    /**
      * Creates the join table for this association
      *
      * @throws SQLException If a database query fails

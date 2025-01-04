@@ -15,6 +15,7 @@ public class HasAndBelongsToMany extends Association {
     private final Field field;
     private final String thisModelName;
     private final String otherModelName;
+    private final String customTableName;
 
     /**
      * Create a new {@code HasAndBelongsToMany} association.
@@ -25,16 +26,20 @@ public class HasAndBelongsToMany extends Association {
     public HasAndBelongsToMany(Class <? extends EasyModel> clazz, Field field) {
         this.field = field;
 
-        if (field.getType() == clazz) {
+        Class <? extends EasyModel> otherType = getOtherType(field);
+
+        if (otherType == clazz) {
             this.thisModelName = clazz.getSimpleName() + "_1";
             this.otherModelName = clazz.getSimpleName() + "_2";
+            this.customTableName = clazz.getSimpleName() + "_" + field.getName();
         }
         else {
             this.thisModelName = clazz.getSimpleName();
-            this.otherModelName = field.getType().componentType().getSimpleName();
+            this.otherModelName = otherType.getSimpleName();
+            this.customTableName = null;
         }
 
-        if (!EasyModel.class.isAssignableFrom(field.getType().componentType())) {
+        if (!EasyModel.class.isAssignableFrom(getComponentType(field))) {
             throw new IllegalArgumentException(
                     "Field must be a subclass of EasyModel"
             );
@@ -106,6 +111,16 @@ public class HasAndBelongsToMany extends Association {
     }
 
     private JoinTableDao getDao(Connection db) {
-        return new JoinTableDao(db, thisModelName, otherModelName);
+        if (customTableName != null) {
+            return new JoinTableDao(
+                    db,
+                    thisModelName,
+                    otherModelName,
+                    customTableName
+            );
+        }
+        else {
+            return new JoinTableDao(db, thisModelName, otherModelName);
+        }
     }
 }

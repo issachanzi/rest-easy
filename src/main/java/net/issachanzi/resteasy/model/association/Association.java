@@ -3,14 +3,11 @@ package net.issachanzi.resteasy.model.association;
 import net.issachanzi.resteasy.model.EasyModel;
 import net.issachanzi.resteasy.model.annotation.NoPersist;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Vector;
-import java.util.stream.Collectors;
+import java.util.Collection;
 import java.util.stream.Stream;
 
 /**
@@ -33,6 +30,42 @@ import java.util.stream.Stream;
  */
 public abstract class Association {
     private Field field;
+
+    @SuppressWarnings("unchecked")
+    protected static Class <? extends EasyModel> getOtherType(Field field) {
+        Type otherType = getComponentType(field);
+
+        if (EasyModel.class.isAssignableFrom(field.getType())) {
+            return (Class<? extends EasyModel>) field.getType();
+        }
+        else if (otherType == null) {
+            throw new RuntimeException("Type is not valid");
+        }
+
+        return (Class<? extends EasyModel>) otherType;
+    }
+
+    static Class<?> getComponentType(Field field) {
+        Type componentType;
+
+        if (field.getType().isArray()) {
+            componentType = field.getType().componentType();
+        }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            Type type = field.getGenericType();
+            if (type instanceof ParameterizedType pType) {
+                componentType = pType.getActualTypeArguments()[0];
+            }
+            else {
+                throw new RuntimeException("Type is not valid");
+            }
+        }
+        else {
+            componentType = null;
+        }
+
+        return (Class<?>) componentType;
+    }
 
     /**
      * Sets up the database to store the association.
@@ -89,7 +122,7 @@ public abstract class Association {
             return null;
         }
 
-        boolean isMultiple = field.getType().isArray();
+        boolean isMultiple = isMultiple(field);
         boolean isOtherMultiple = isOtherMultiple (clazz, field);
         if (isMultiple) {
             if (isOtherMultiple) {
@@ -114,6 +147,18 @@ public abstract class Association {
         }
     }
 
+    private static boolean isMultiple(Field field) {
+        if (field.getType().isArray()) {
+            return true;
+        }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
     private static boolean isOtherMultiple(
             Class<? extends EasyModel> clazz,
             Field field
@@ -124,20 +169,41 @@ public abstract class Association {
             return false;
         }
         else {
-            return otherField.getType().isArray();
+            return isMultiple(otherField);
         }
     }
 
-    private static boolean isSupportedAssociation(Field field) {
+    public static boolean isSupportedAssociation(Field field) {
         var fieldType = field.getType();
         if (EasyModel.class.isAssignableFrom(fieldType)) {
             return true;
         }
-        else if (!fieldType.isArray()) {
-            return false;
+        else if (fieldType.isArray()) {
+            return EasyModel.class.isAssignableFrom(fieldType.componentType());
+        }
+        else if (Collection.class.isAssignableFrom(fieldType)) {
+            Type type = field.getGenericType();
+            if (type instanceof ParameterizedType pType) {
+                if (
+                    pType.getActualTypeArguments().length > 0
+                        && pType.getActualTypeArguments() [0] instanceof Class
+                ) {
+                    return (
+                            EasyModel.class.isAssignableFrom(
+                                (Class <?>) pType.getActualTypeArguments()[0]
+                            )
+                    );
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
         }
         else {
-            return EasyModel.class.isAssignableFrom(fieldType.componentType());
+            return false;
         }
     }
 
@@ -145,14 +211,11 @@ public abstract class Association {
             Class <? extends EasyModel> clazz,
             Field field
     ) {
-        var otherClazz = field.getType();
-        if (otherClazz.isArray()) {
-            otherClazz = otherClazz.componentType();
-        }
+        var otherClazz = getOtherType(field);
         var otherClazzFields = getFields(otherClazz);
 
         for (var f : otherClazzFields) {
-            if (f.getType () == clazz || f.getType().componentType() == clazz) {
+            if (f.getType () == clazz || getComponentType(f) == clazz) {
                 return f;
             }
         }

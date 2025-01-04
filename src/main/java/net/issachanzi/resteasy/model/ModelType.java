@@ -70,7 +70,7 @@ public class ModelType {
         if (field.getAnnotation(NoPersist.class) != null) {
             return false;
         }
-        else if ((field.getModifiers() & Modifier.STATIC) != 0) {
+        else if (Modifier.isStatic(field.getModifiers())) {
             // Static fields are not persistent.
             return false;
         }
@@ -78,6 +78,9 @@ public class ModelType {
             return true;
         }
         else if (EasyModel.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
+        else if (Association.isSupportedAssociation (field)) {
             return true;
         }
         else {
