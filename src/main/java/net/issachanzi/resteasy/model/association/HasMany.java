@@ -6,6 +6,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -28,7 +29,13 @@ public class HasMany extends Association {
         this.field = field;
 
         this.tableName = field.getType().componentType().getSimpleName();
-        this.columnName = clazz.getSimpleName();
+        this.columnName = Arrays.stream(
+            field.getType().getFields()
+        )
+            .filter(f -> f.getType() == clazz)
+            .findAny()
+            .map (Field::getName)
+            .orElse(clazz.getSimpleName());
 
         if (!EasyModel.class.isAssignableFrom(field.getType().componentType())) {
             throw new IllegalArgumentException(
