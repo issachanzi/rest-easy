@@ -5,6 +5,7 @@ import net.issachanzi.resteasy.model.EasyModel;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -27,7 +28,13 @@ public class HasOne extends Association {
         this.field = field;
 
         this.tableName = field.getType().getSimpleName();
-        this.columnName = clazz.getSimpleName();
+        this.columnName = Arrays.stream(
+                field.getType().getFields()
+        )
+            .filter(f -> f.getType() == clazz)
+            .findAny()
+            .orElseThrow()
+            .getName();
 
         if (! EasyModel.class.isAssignableFrom(field.getType())) {
             throw new IllegalArgumentException(
