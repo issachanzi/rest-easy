@@ -4,8 +4,12 @@ import net.issachanzi.resteasy.model.EasyModel;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.UUID;
 
 /**
@@ -64,24 +68,61 @@ public class HasAndBelongsToMany extends Association {
 
         UUID[] uuids = dao.getAssociations(model.id);
         var componentType
-                = (Class <? extends EasyModel>) field.getType().componentType();
+                = (Class<? extends EasyModel>) getComponentType(field);
 
-        var value = Array.newInstance(componentType, uuids.length);
-        for (int i = 0; i < uuids.length; i++) {
-            EasyModel v = EasyModel.byId (
-                    db,
-                    uuids [i],
-                    componentType,
-                    chainSource
-            );
+        Object value;
+        if (field.getType().isArray()) {
+            value = Array.newInstance(componentType, uuids.length);
+            for (int i = 0; i < uuids.length; i++) {
+                EasyModel v = EasyModel.byId (
+                        db,
+                        uuids [i],
+                        componentType,
+                        chainSource
+                );
 
-            Array.set(value, i, v);
+                Array.set(value, i, v);
+            }
+
+            try {
+                field.setAccessible(true);
+                field.set(model, value);
+                field.setAccessible(false);
+            } catch (IllegalAccessException | ClassCastException e) {
+                throw new RuntimeException(e);
+            }
         }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            try {
+                field.setAccessible(true);
+                var collection
+                        = (Collection<? extends EasyModel>) field.get(model);
+                field.setAccessible(false);
 
-        try {
-            field.set(model, value);
-        } catch (IllegalAccessException | ClassCastException e) {
-            throw new RuntimeException(e);
+                collection.clear();
+                for (UUID uuid : uuids) {
+                    EasyModel element = EasyModel.byId(
+                            db,
+                            uuid,
+                            componentType,
+                            chainSource
+                    );
+                    // You can't add anything to a Collection with a wildcard in
+                    // the type parameter, so I have to cast to a raw Collection
+                    ((Collection) collection).add(element);
+
+//                    // I thought I was so clever with this, but it turns out
+                      // that there is a more elegant way of doing this
+//                    Method addMethod = collection
+//                            .getClass()
+//                            .getMethod("add", componentType);
+//                    addMethod.invoke(collection, element);
+                }
+            }
+            catch (IllegalAccessException |
+                   ClassCastException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -89,16 +130,28 @@ public class HasAndBelongsToMany extends Association {
     public void save(Connection db, EasyModel model) throws SQLException {
         try {
             var dao = getDao(db);
+            field.setAccessible(true);
             var value = field.get (model);
+            field.setAccessible(false);
 
             dao.clearAssociations(model.id);
 
             if (value != null) {
-                int valueLength = Array.getLength(value);
-                for (int i = 0; i < valueLength; i++) {
-                    var v = (EasyModel) Array.get(value, i);
+                if (value instanceof Collection <?>) {
+                    for (var v :(Iterable <? extends EasyModel>) value) {
+                        dao.addAssociation(model.id, v.id);
+                    }
+                }
+                else if (value.getClass().isArray()) {
+                    int valueLength = Array.getLength(value);
+                    for (int i = 0; i < valueLength; i++) {
+                        var v = (EasyModel) Array.get(value, i);
 
-                    dao.addAssociation(model.id, v.id);
+                        dao.addAssociation(model.id, v.id);
+                    }
+                }
+                else {
+                    throw new RuntimeException ();
                 }
             }
             else {

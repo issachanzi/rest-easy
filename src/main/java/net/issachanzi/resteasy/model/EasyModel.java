@@ -324,7 +324,14 @@ public abstract class EasyModel {
             }
             Class<?> type = field.getType();
             String valueStr = strFilter.get(key);
-            Object value = SqlDatatypes.fromString(valueStr, type);
+            Object value;
+            if (EasyModel.class.isAssignableFrom(type)) {
+                value = valueStr;
+            }
+            else {
+                value = SqlDatatypes.fromString(valueStr, type);
+            }
+
             filter.put(key, value);
         }
 
