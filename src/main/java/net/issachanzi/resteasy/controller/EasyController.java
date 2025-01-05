@@ -191,7 +191,7 @@ public class EasyController implements Controller {
                 }
             }
 
-            var result = customMethod.invoke (modelInstance, args);
+            var result = customMethod.invoke (modelInstance, args.toArray());
 
             if (result instanceof EasyModel) {
                 return new EasyView ((EasyModel) result).toString();

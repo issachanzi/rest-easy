@@ -218,7 +218,7 @@ public class BasicDao {
         List<String> columns = values.keySet().stream().toList();
         String setSql = mapJoin(
                 columns,
-                colName -> escape (colName) + " = " + values.get(colName),
+                colName -> escape (colName) + " = ?",
                 ", "
         );
         String sql  = "UPDATE " + tableName + " "
