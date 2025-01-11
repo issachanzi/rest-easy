@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Stack;
 import java.util.UUID;
 
 /**
@@ -13,8 +14,6 @@ import java.util.UUID;
  * {@link BelongsTo}.
  */
 public class HasOne extends Association {
-    private final Field field;
-
     private final String tableName;
     private final  String columnName;
 
@@ -55,7 +54,7 @@ public class HasOne extends Association {
     public void load (
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack<EasyModel> chain
     ) throws SQLException {
         var dao = getDao(db);
 
@@ -66,7 +65,7 @@ public class HasOne extends Association {
                         db,
                         uuid,
                         (Class<? extends EasyModel>) field.getType(),
-                        chainSource
+                        chain
                 );
 
                 field.set(model, value);

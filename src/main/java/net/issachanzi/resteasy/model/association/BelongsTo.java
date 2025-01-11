@@ -5,14 +5,13 @@ import net.issachanzi.resteasy.model.EasyModel;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Stack;
 import java.util.UUID;
 
 /**
  * One side of a one-to-one or one-to-many association.
  */
 public class BelongsTo extends Association {
-    private final Field field;
-
     private final String tableName;
     private final  String columnName;
 
@@ -44,7 +43,7 @@ public class BelongsTo extends Association {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void load(Connection db, EasyModel model, EasyModel chainSource)
+    public void load(Connection db, EasyModel model, Stack<EasyModel> chain)
             throws SQLException {
         var dao = getDao(db);
 
@@ -55,7 +54,7 @@ public class BelongsTo extends Association {
                         db,
                         uuid,
                         (Class<? extends EasyModel>) field.getType(),
-                        chainSource
+                        chain
                 );
 
                 field.setAccessible(true);

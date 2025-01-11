@@ -4,19 +4,16 @@ import net.issachanzi.resteasy.model.EasyModel;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Stack;
 import java.util.UUID;
 
 /**
  * A many-to-many association
  */
 public class HasAndBelongsToMany extends Association {
-    private final Field field;
     private final String thisModelName;
     private final String otherModelName;
     private final String customTableName;
@@ -62,68 +59,13 @@ public class HasAndBelongsToMany extends Association {
     public void load(
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack<EasyModel> chain
     ) throws SQLException {
         var dao = getDao(db);
 
         UUID[] uuids = dao.getAssociations(model.id);
-        var componentType
-                = (Class<? extends EasyModel>) getComponentType(field);
 
-        Object value;
-        if (field.getType().isArray()) {
-            value = Array.newInstance(componentType, uuids.length);
-            for (int i = 0; i < uuids.length; i++) {
-                EasyModel v = EasyModel.byId (
-                        db,
-                        uuids [i],
-                        componentType,
-                        chainSource
-                );
-
-                Array.set(value, i, v);
-            }
-
-            try {
-                field.setAccessible(true);
-                field.set(model, value);
-                field.setAccessible(false);
-            } catch (IllegalAccessException | ClassCastException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        else if (Collection.class.isAssignableFrom(field.getType())) {
-            try {
-                field.setAccessible(true);
-                var collection
-                        = (Collection<? extends EasyModel>) field.get(model);
-                field.setAccessible(false);
-
-                collection.clear();
-                for (UUID uuid : uuids) {
-                    EasyModel element = EasyModel.byId(
-                            db,
-                            uuid,
-                            componentType,
-                            chainSource
-                    );
-                    // You can't add anything to a Collection with a wildcard in
-                    // the type parameter, so I have to cast to a raw Collection
-                    ((Collection) collection).add(element);
-
-//                    // I thought I was so clever with this, but it turns out
-                      // that there is a more elegant way of doing this
-//                    Method addMethod = collection
-//                            .getClass()
-//                            .getMethod("add", componentType);
-//                    addMethod.invoke(collection, element);
-                }
-            }
-            catch (IllegalAccessException |
-                   ClassCastException e) {
-                throw new RuntimeException(e);
-            }
-        }
+        loadManyByUuid(db, model, chain, uuids);
     }
 
     @Override

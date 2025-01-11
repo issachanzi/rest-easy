@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Stack;
 import java.util.UUID;
 
 /**
@@ -14,8 +15,6 @@ import java.util.UUID;
  * {@link BelongsTo}.
  */
 public class HasMany extends Association {
-    private final Field field;
-
     private final String tableName;
     private final  String columnName;
 
@@ -30,7 +29,7 @@ public class HasMany extends Association {
 
         this.tableName = getOtherType(field).getSimpleName();
         this.columnName = Arrays.stream(
-            field.getType().getFields()
+            getComponentType(field).getFields()
         )
             .filter(f -> f.getType() == clazz)
             .findAny()
@@ -56,31 +55,13 @@ public class HasMany extends Association {
     public void load (
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack<EasyModel> chain
     ) throws SQLException {
         var dao = getDao(db);
 
         UUID [] uuids = dao.getAllPrimaryByForeign(model.id);
-        var componentType
-                = (Class <? extends EasyModel>) field.getType().componentType();
 
-        var value = Array.newInstance(componentType, uuids.length);
-        for (int i = 0; i < uuids.length; i++) {
-            EasyModel v = EasyModel.byId (
-                    db,
-                    uuids [i],
-                    componentType,
-                    chainSource
-            );
-
-            Array.set(value, i, v);
-        }
-
-        try {
-            field.set(model, value);
-        } catch (IllegalAccessException | ClassCastException e) {
-            throw new RuntimeException(e);
-        }
+        loadManyByUuid(db, model, chain, uuids);
     }
 
     @Override

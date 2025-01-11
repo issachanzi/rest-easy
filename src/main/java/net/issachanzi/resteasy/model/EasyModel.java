@@ -209,7 +209,7 @@ public abstract class EasyModel {
     ) throws SQLException {
         boolean lazy = false;
 
-        return byId(db, id, clazz, null);
+        return byId(db, id, clazz, new Stack<>());
     }
 
     /**
@@ -226,7 +226,7 @@ public abstract class EasyModel {
      * @param db Database connection to use
      * @param id The id of the model instance to find
      * @param clazz The class of the model instance to find
-     * @param chainSource Model instance to break recursion on
+     * @param chain Model instance to break recursion on
      *
      * @return The model instance with the specified id
      * @param <M> The class of the model instance to find
@@ -237,25 +237,25 @@ public abstract class EasyModel {
             Connection db,
             UUID id,
             Class<M> clazz,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
-        if (
-            chainSource != null
-            && chainSource.getClass() == clazz
-            && chainSource.id.equals(id)
-        ) {
-            return (M) chainSource;
+        for (var model : chain) {
+            if (
+                model.getClass() == clazz
+                && model.id.equals(id)
+            ) {
+                return (M) model;
+            }
         }
-        else {
-            BasicDao dao = new BasicDao(
-                    db,
-                    clazz.getSimpleName(),
-                    ModelType.get(clazz).columnTypes()
-            );
-            Map<String, Object> fieldValues = dao.select(id);
 
-            return unfreezeModel(clazz, fieldValues, db, chainSource);
-        }
+        BasicDao dao = new BasicDao(
+                db,
+                clazz.getSimpleName(),
+                ModelType.get(clazz).columnTypes()
+        );
+        Map<String, Object> fieldValues = dao.select(id);
+
+        return unfreezeModel(clazz, fieldValues, db, chain);
     }
 
     /**
@@ -398,14 +398,14 @@ public abstract class EasyModel {
             Map <String, Object> fieldValues,
             Connection db
     ) throws SQLException {
-        return unfreezeModel(clazz, fieldValues, db, null);
+        return unfreezeModel(clazz, fieldValues, db, new Stack<>());
     }
 
     private static <M extends EasyModel> M unfreezeModel(
             Class<M> clazz,
             Map<String, Object> fieldValues,
             Connection db,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
         try {
             M model = clazz.getDeclaredConstructor().newInstance();
@@ -430,10 +430,9 @@ public abstract class EasyModel {
 
             // chainSource is required to avoid an infinite recursion loop
             //      with two models associated with each other
-            if (chainSource == null) {
-                chainSource = model;
-            }
-            loadAssociations(db, model, chainSource);
+            chain.push (model);
+            loadAssociations(db, model, chain);
+            chain.pop();
 
             return model;
         } catch (
@@ -464,10 +463,10 @@ public abstract class EasyModel {
     private static void loadAssociations(
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
         for (var association : model.modelType.associations()) {
-            association.load(db, model, chainSource);
+            association.load(db, model, chain);
         }
     }
 
