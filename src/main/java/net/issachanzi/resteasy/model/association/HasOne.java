@@ -5,6 +5,8 @@ import net.issachanzi.resteasy.model.EasyModel;
 import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Stack;
 import java.util.UUID;
 
 /**
@@ -12,8 +14,6 @@ import java.util.UUID;
  * {@link BelongsTo}.
  */
 public class HasOne extends Association {
-    private final Field field;
-
     private final String tableName;
     private final  String columnName;
 
@@ -27,7 +27,13 @@ public class HasOne extends Association {
         this.field = field;
 
         this.tableName = field.getType().getSimpleName();
-        this.columnName = clazz.getSimpleName();
+        this.columnName = Arrays.stream(
+                field.getType().getFields()
+        )
+            .filter(f -> f.getType() == clazz)
+            .findAny()
+            .orElseThrow()
+            .getName();
 
         if (! EasyModel.class.isAssignableFrom(field.getType())) {
             throw new IllegalArgumentException(
@@ -48,7 +54,7 @@ public class HasOne extends Association {
     public void load (
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack<EasyModel> chain
     ) throws SQLException {
         var dao = getDao(db);
 
@@ -59,7 +65,7 @@ public class HasOne extends Association {
                         db,
                         uuid,
                         (Class<? extends EasyModel>) field.getType(),
-                        chainSource
+                        chain
                 );
 
                 field.set(model, value);

@@ -1,20 +1,15 @@
 package net.issachanzi.resteasy.model;
 
-import java.io.StringReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
-import java.sql.Date;
 
 import net.issachanzi.resteasy.controller.exception.HttpErrorStatus;
 import net.issachanzi.resteasy.model.annotation.NoHttp;
 import net.issachanzi.resteasy.model.annotation.NoPersist;
-import net.issachanzi.resteasy.model.association.Association;
-import jakarta.json.Json;
 import jakarta.json.JsonObject;
-
-import static net.issachanzi.resteasy.model.HttpField.isPublic;
+import org.eclipse.jetty.http.ComplianceViolation;
 
 /**
  * Base class for a model in a Rest Easy application
@@ -39,14 +34,17 @@ import static net.issachanzi.resteasy.model.HttpField.isPublic;
  *
  * <p>
  *     Authorisation checks can be done by overriding the
- *     {@link #authorize(String, AccessType)} method.
+ *     {@link #authorize(Connection, String, AccessType)} method.
  * </p>
  */
 public abstract class EasyModel {
-    private static Map <Class <? extends EasyModel>, Association[]> associations
-            = new HashMap <> ();
-    private static Map <Class <? extends EasyModel>, Map <Field, HttpField <?>>>
-            httpFields = new HashMap<>();
+//    TODO delete this code
+//    private static Map <Class <? extends EasyModel>, Association[]> associations
+//            = new HashMap <> ();
+//    private static Map <Class <? extends EasyModel>, Map <Field, HttpField <?>>>
+//            httpFields = new HashMap<>();
+
+    private ModelType modelType;
 
     /**
      * An ID field as a primary key for the database table.
@@ -58,59 +56,8 @@ public abstract class EasyModel {
      */
     public UUID id = null;
 
-    /**
-     * Instantiate a model based on its data in JSON format
-     *
-     * @param db Database connection to use to perform queries
-     * @param json The JSON data to populate the model instance with
-     * @param clazz The specific subclass to instantiate
-     * @return The new model, populated with the supplied JSON data
-     * @param <T> The specific subclass to instantiate
-     */
-    public static <T extends EasyModel> T fromJson (
-            Connection db,
-            String json,
-            Class<T> clazz
-    ) throws
-            InvocationTargetException,
-            NoSuchMethodException,
-            InstantiationException,
-            IllegalAccessException,
-            SQLException,
-            HttpErrorStatus
-    {
-        var reader = Json.createReader (new StringReader(json));
-        var jsonObject = reader.readObject();
-
-        return fromJson (db, jsonObject, clazz);
-    }
-
-    /**
-     * Instantiate a model based on its data in JSON format
-     *
-     * @param db Database connection to use to perform queries
-     * @param jsonObject The JSON data to populate the model instance with
-     * @param clazz The specific subclass to instantiate
-     * @return The new model, populated with the supplied JSON data
-     * @param <T> The specific subclass to instantiate
-     */
-    private static <T extends EasyModel> T fromJson (
-           Connection db,
-           JsonObject jsonObject,
-           Class <T> clazz
-    ) throws
-            NoSuchMethodException,
-            InvocationTargetException,
-            InstantiationException,
-            IllegalAccessException,
-            SQLException,
-            HttpErrorStatus
-    {
-        T model = clazz.getDeclaredConstructor().newInstance();
-
-        model.init(db, jsonObject);
-
-        return model;
+    protected EasyModel () {
+        this.modelType = ModelType.get(this.getClass());
     }
 
     /**
@@ -133,13 +80,15 @@ public abstract class EasyModel {
             Connection db,
             JsonObject jsonObject
     ) throws SQLException, HttpErrorStatus {
-        var clazz = this.getClass();
-
-        for (var field : persistentFields(this.getClass())) {
-            if (jsonObject.containsKey(field.getName())) {
-                var httpField = httpFields.get(clazz).get(field);
+        List<HttpField<?>> initFields = this.modelType
+                .httpFields()
+                .stream()
+                .filter(HttpField::canSet)
+                .toList();
+        for (var field : initFields) {
+            if (jsonObject.containsKey(field.name())) {
                 try {
-                    httpField.set(this, fieldFromJson(db, jsonObject, field));
+                    field.set(this, fieldFromJson(db, jsonObject, field));
                 } catch (HttpErrorStatus ignored) {}
             }
         }
@@ -161,59 +110,12 @@ public abstract class EasyModel {
     private static Object fieldFromJson (
             Connection db,
             JsonObject jsonObject,
-            Field field
+            HttpField <?> field
     ) throws IllegalArgumentException, SQLException {
-        var type = field.getType();
-        var fieldName = field.getName();
+        var type = field.type();
+        var fieldName = field.name();
 
-        if (type == UUID.class) {
-            return UUID.fromString(jsonObject.getString(fieldName));
-        }
-        else if (type == String.class) {
-            return jsonObject.getString(fieldName);
-        }
-        else if (type == boolean.class || type == Boolean.class) {
-            return jsonObject.getBoolean(fieldName);
-        }
-        else if (type == byte.class || type == Byte.class) {
-            return (byte) jsonObject.getInt(fieldName);
-        }
-        else if (type == short.class || type == Short.class) {
-            return (short) jsonObject.getInt(fieldName);
-        }
-        else if (type == int.class || type == Integer.class) {
-            return jsonObject.getInt(fieldName);
-        }
-        else if (type == long.class || type == Long.class) {
-            return jsonObject.getJsonNumber(fieldName).longValue();
-        }
-        else if (type == float.class || type == Float.class) {
-            return (float) jsonObject.getJsonNumber(fieldName).doubleValue();
-        }
-        else if (type == double.class || type == Double.class) {
-            return jsonObject.getJsonNumber(fieldName).doubleValue();
-        }
-        else if (type == Date.class) {
-            return Date.valueOf (jsonObject.getString(fieldName));
-        }
-        else if (type == Time.class) {
-            return Time.valueOf (jsonObject.getString(fieldName));
-        }
-        else if (type == Timestamp.class) {
-            return Timestamp.valueOf (jsonObject.getString(fieldName));
-        }
-        if (EasyModel.class.isAssignableFrom(type)) {
-            return EasyModel.byId (
-                    db,
-                    UUID.fromString(jsonObject.getString(fieldName)),
-                    (Class <? extends EasyModel>) type
-            );
-        }
-        else if (jsonObject.isNull(fieldName)) {
-            return null;
-        }
-
-        throw new IllegalArgumentException("Unsupported type " + type.getName());
+        return SqlDatatypes.objectFromJson(fieldName, type, db, jsonObject);
     }
 
     /**
@@ -236,7 +138,7 @@ public abstract class EasyModel {
                         fieldType
                 );
 
-                var httpField = httpFields.get(this.getClass()).get(field);
+                var httpField = this.modelType.httpField(field);
                 httpField.set(this, fieldValue);
             } catch (NoSuchFieldException |
                      HttpErrorStatus ignored) {}
@@ -253,22 +155,22 @@ public abstract class EasyModel {
         BasicDao dao = new BasicDao(
                 db,
                 this.getClass().getSimpleName(),
-                columnTypes()
+                modelType.columnTypes()
         );
 
         if (this.id == null) {
             this.id = UUID.randomUUID();
 
-            dao.insert(persistentFieldValues());
+            dao.insert(primitivePersistentFieldValues());
         } else {
-            dao.update(id, persistentFieldValues());
+            dao.update(id, primitivePersistentFieldValues());
         }
 
         saveAssociations (db);
     }
 
     private void saveAssociations(Connection db) throws SQLException {
-        for (var association : associations.get(this.getClass())) {
+        for (var association : this.modelType.associations()) {
             association.save(db, this);
         }
     }
@@ -283,7 +185,7 @@ public abstract class EasyModel {
         BasicDao dao = new BasicDao(
                 db,
                 this.getClass().getSimpleName(),
-                columnTypes()
+                modelType.columnTypes()
         );
 
         dao.delete(this.id);
@@ -292,7 +194,7 @@ public abstract class EasyModel {
     /**
      * Retrieves a model instance from the database based on its id
      *
-     * @param db Databbase connection to use
+     * @param db Database connection to use
      * @param id The id of the model instance to find
      * @param clazz The class of the model instance to find
      *
@@ -307,7 +209,7 @@ public abstract class EasyModel {
     ) throws SQLException {
         boolean lazy = false;
 
-        return byId(db, id, clazz, null);
+        return byId(db, id, clazz, new Stack<>());
     }
 
     /**
@@ -321,10 +223,10 @@ public abstract class EasyModel {
      *     querying the database or fetching any data.
      * </p>
      *
-     * @param db Databbase connection to use
+     * @param db Database connection to use
      * @param id The id of the model instance to find
      * @param clazz The class of the model instance to find
-     * @param chainSource Model instance to break recursion on
+     * @param chain Model instance to break recursion on
      *
      * @return The model instance with the specified id
      * @param <M> The class of the model instance to find
@@ -335,24 +237,28 @@ public abstract class EasyModel {
             Connection db,
             UUID id,
             Class<M> clazz,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
-        if (
-            chainSource != null
-            && chainSource.getClass() == clazz
-            && chainSource.id.equals(id)
-        ) {
-            return (M) chainSource;
+        for (var model : chain) {
+            if (
+                model.getClass() == clazz
+                && model.id.equals(id)
+            ) {
+                return (M) model;
+            }
         }
-        else {
+
+        try {
             BasicDao dao = new BasicDao(
                     db,
                     clazz.getSimpleName(),
-                    columnTypes(clazz)
+                    ModelType.get(clazz).columnTypes()
             );
             Map<String, Object> fieldValues = dao.select(id);
 
-            return unfreezeModel(clazz, fieldValues, db, chainSource);
+            return unfreezeModel(clazz, fieldValues, db, chain);
+        } catch (NoSuchElementException ex) {
+            return null;
         }
     }
 
@@ -373,7 +279,7 @@ public abstract class EasyModel {
         BasicDao dao = new BasicDao(
                 db,
                 clazz.getSimpleName(),
-                columnTypes(clazz)
+                ModelType.get(clazz).columnTypes()
         );
 
         Collection<M> results = new LinkedList<>();
@@ -410,19 +316,27 @@ public abstract class EasyModel {
         BasicDao dao = new BasicDao(
                 db,
                 clazz.getSimpleName(),
-                columnTypes(clazz)
+                ModelType.get(clazz).columnTypes()
         );
 
         Map<String, Object> filter = new HashMap<>();
         for(String key : strFilter.keySet()) {
-            try {
-                Class<?> type = clazz.getField(key).getType();
-                String valueStr = strFilter.get(key);
-                Object value = SqlDatatypes.fromString(valueStr, type);
-                filter.put(key, value);
-            } catch (NoSuchFieldException e) {
-                continue;
+            Field field = findField(clazz, key);
+            if (field == null) {
+                // TODO not sure what to do here
+                throw new RuntimeException();
             }
+            Class<?> type = field.getType();
+            String valueStr = strFilter.get(key);
+            Object value;
+            if (EasyModel.class.isAssignableFrom(type)) {
+                value = valueStr;
+            }
+            else {
+                value = SqlDatatypes.fromString(valueStr, type);
+            }
+
+            filter.put(key, value);
         }
 
         Collection<M> results = new LinkedList<>();
@@ -437,7 +351,7 @@ public abstract class EasyModel {
 
     /**
      * Retrieves from the database instances of a specified model that match
-     * an arbitrary SQL {@code WHERE} clauss
+     * an arbitrary SQL {@code WHERE} clause
      *
      * <p>
      *     <b>Never</b> interpolate user input or untrusted data of any kind
@@ -469,7 +383,7 @@ public abstract class EasyModel {
         BasicDao dao = new BasicDao(
                 db,
                 clazz.getSimpleName(),
-                columnTypes(clazz)
+                ModelType.get(clazz).columnTypes()
         );
 
         Collection<M> results = new LinkedList<>();
@@ -488,20 +402,23 @@ public abstract class EasyModel {
             Map <String, Object> fieldValues,
             Connection db
     ) throws SQLException {
-        return unfreezeModel(clazz, fieldValues, db, null);
+        return unfreezeModel(clazz, fieldValues, db, new Stack<>());
     }
 
     private static <M extends EasyModel> M unfreezeModel(
             Class<M> clazz,
             Map<String, Object> fieldValues,
             Connection db,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
         try {
             M model = clazz.getDeclaredConstructor().newInstance();
 
             for (var fieldName : fieldValues.keySet()) {
-                var field = clazz.getField(fieldName);
+                Field field = findField(clazz, fieldName);
+                if (field == null) {
+                    continue;
+                }
                 var value = fieldValues.get(fieldName);
 
                 // Special case for UUID
@@ -510,90 +427,51 @@ public abstract class EasyModel {
                     value = UUID.fromString((String) value);
                 }
 
+                field.setAccessible(true);
                 field.set(model, value);
+                field.setAccessible(false);
             }
 
             // chainSource is required to avoid an infinite recursion loop
             //      with two models associated with each other
-            if (chainSource == null) {
-                chainSource = model;
-            }
-            loadAssociations(db, model, chainSource);
+            chain.push (model);
+            loadAssociations(db, model, chain);
+            chain.pop();
 
             return model;
         } catch (
                 InstantiationException |
                 IllegalAccessException |
                 InvocationTargetException |
-                NoSuchMethodException |
-                NoSuchFieldException e
+                NoSuchMethodException e
         ) {
             throw new RuntimeException(e);
         }
     }
 
+    private static <M extends EasyModel> Field findField(Class<M> clazz, String fieldName) {
+        Field field;
+        try {
+            field = clazz.getField(fieldName);
+        } catch (NoSuchFieldException ex) {
+            try {
+                field = clazz.getDeclaredField(fieldName);
+            }
+            catch (NoSuchFieldException ex2) {
+                return null;
+            }
+        }
+        return field;
+    }
+
     private static void loadAssociations(
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack <EasyModel> chain
     ) throws SQLException {
-        for (var association : associations.get(model.getClass())) {
-            association.load(db, model, chainSource);
+        for (var association : model.modelType.associations()) {
+            association.load(db, model, chain);
         }
-    }
-
-    /**
-     * Sets up the database table for a specified model class
-     *
-     * @param db Database connection to use
-     * @param clazz The class to set up the table for
-     */
-    public static void sync (
-            Connection db,
-            Class <? extends EasyModel> clazz
-    ) {
-        setupHttpFields(clazz);
-
-        BasicDao dao = new BasicDao(
-                db,
-                clazz.getSimpleName(),
-                columnTypes(clazz)
-        );
-
-        try {
-            dao.createTable();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    /**
-     * Sets up the associations for a specified model in the database
-     *
-     * @param db Database connection to use
-     * @param clazz The model class to set up associations for
-     */
-    public static void syncAssociations(
-            Connection db,
-            Class<? extends EasyModel> clazz
-    ) {
-        var modelAssociations = new Vector<Association>();
-
-        for (var field : clazz.getFields()) {
-            var association = Association.forField (clazz, field);
-
-            if (association != null) {
-                modelAssociations.add(association);
-
-                try {
-                    association.init(db);
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-
-        associations.put(clazz, modelAssociations.toArray(new Association [0]));
     }
 
     /**
@@ -602,12 +480,14 @@ public abstract class EasyModel {
      *
      * @return A Map of fields in this model with their values
      */
-    public Map<String, Object> persistentFieldValues() {
+    public Map<String, Object> primitivePersistentFieldValues() {
         try {
             Map<String, Object> result = new HashMap<>();
 
-            for (var field : primitiveFields()) {
+            for (var field : modelType.primitivePersistentFields()) {
+                field.setAccessible(true);
                 result.put(field.getName(), field.get(this));
+                field.setAccessible(false);
             }
 
             return result;
@@ -626,58 +506,18 @@ public abstract class EasyModel {
         Map<String, Object> result = new HashMap<>();
 
         // TODO implement authorisation
-        for (var field : httpFields()) {
-            try {
-                var fieldValue = httpFields
-                        .get(this.getClass())
-                        .get(field)
-                        .get(this);
-                result.put(field.getName(), fieldValue);
-            } catch (HttpErrorStatus ignored) { }
-        }
+        for (var field : modelType.httpFields()) {
+            if (field.canGet()) {
+                try {
 
-        return result;
-    }
-
-    private static void setupHttpFields (Class <? extends EasyModel> clazz) {
-        Map <Field, HttpField <?>> httpFields = new HashMap<>();
-
-        var publicFields = clazz.getFields();
-        for (var field : publicFields) {
-            var httpField = HttpField.forField(clazz, field, field.getType());
-
-            if (httpField.canGet() || httpField.canSet()) {
-                httpFields.put(field, httpField);
-            }
-        }
-
-        var declaredFields = clazz.getDeclaredFields();
-        for (var field : declaredFields) {
-            if (!isPublic (field)) {
-                var httpField = HttpField.forField(clazz, field, field.getType());
-
-                if (httpField.canGet() || httpField.canSet()) {
-                    httpFields.put(field, httpField);
+                    var fieldValue = field.get(this);
+                    result.put(field.name(), fieldValue);
+                } catch (HttpErrorStatus ignored) {
                 }
             }
         }
 
-        EasyModel.httpFields.put(clazz, httpFields);
-    }
-
-
-
-    private Collection <Field> httpFields () {
-        return httpFields(this.getClass());
-    }
-
-    private static Collection <Field> httpFields (
-            Class <? extends EasyModel> clazz
-    ) {
-        // Return all fields that **do not** have a @NoHttp annotation
-        return Arrays.stream(clazz.getFields())
-                .filter(field -> field.getAnnotation(NoHttp.class) == null)
-                .toList();
+        return result;
     }
 
     /**
@@ -700,9 +540,9 @@ public abstract class EasyModel {
     ) {
         Map <String, String> result = new HashMap <> ();
 
-        for (var field : httpFields(clazz)) {
-            String name = field.getName();
-            String type = SqlDatatypes.schemaType(field.getType());
+        for (var field : ModelType.get(clazz).httpFields()) {
+            String name = field.name();
+            String type = SqlDatatypes.schemaType(field.type());
 
             result.put (name, type);
         }
@@ -738,72 +578,20 @@ public abstract class EasyModel {
         return true;
     }
 
-    private static boolean isPersistent(Field field) {
-        if (field.getAnnotation(NoPersist.class) != null) {
-            return false;
-        }
-        else if (SqlDatatypes.isPrimitive(field.getType())) {
-            return true;
-        }
-        else if (EasyModel.class.isAssignableFrom(field.getType())) {
-            return true;
+    @Override
+    public boolean equals (Object obj) {
+        if (obj instanceof EasyModel) {
+            return ((EasyModel) obj).id.equals(this.id);
         }
         else {
             return false;
         }
     }
 
-    private Map<String, String> columnTypes() {
-        return columnTypes(this.getClass());
+    @Override
+    public int hashCode () {
+        return this.id.hashCode();
     }
 
-    private static Map<String, String> columnTypes(
-            Class<? extends EasyModel> clazz
-    ) {
-        Map<String, String> result = new HashMap<>();
-
-        for (var field : primitiveFields (clazz)) {
-            String fieldName = field.getName();
-            String columnType = SqlDatatypes.forClass(field.getType());
-
-            result.put(fieldName, columnType);
-        }
-
-        return result;
-    }
-
-    private List<Field> primitiveFields() {
-        return primitiveFields (this.getClass());
-    }
-
-    private static List<Field> persistentFields(
-            Class<? extends EasyModel> clazz
-    ) {
-        List<Field> result = new LinkedList<>();
-        var fields = clazz.getFields();
-
-        for (var field : fields) {
-            if (isPersistent(field)) {
-                result.add(field);
-            }
-        }
-
-        return result;
-    }
-
-    private static List<Field> primitiveFields(
-            Class<? extends EasyModel> clazz
-    ) {
-        List<Field> result = new LinkedList<>();
-        var fields = clazz.getFields();
-
-        for (var field : fields) {
-            if (SqlDatatypes.isPrimitive (field.getType())) {
-                result.add(field);
-            }
-        }
-
-        return result;
-    }
 }
 

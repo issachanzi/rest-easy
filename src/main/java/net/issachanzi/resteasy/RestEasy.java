@@ -5,6 +5,7 @@ import net.issachanzi.resteasy.controller.EasyController;
 import net.issachanzi.resteasy.controller.ServletController;
 import net.issachanzi.resteasy.model.EasyModel;
 import net.issachanzi.resteasy.model.Loader;
+import net.issachanzi.resteasy.model.ModelType;
 import net.issachanzi.resteasy.model.Schema;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.server.Server;
@@ -32,7 +33,7 @@ public class RestEasy {
      * @throws Exception If an error occurs
      */
     public void init(Connection db) throws Exception {
-        var models = Loader.load();
+        var models = new Loader ().load();
 
         initSchema (models);
 
@@ -75,10 +76,10 @@ public class RestEasy {
             Connection db
     ) {
         for (var model : models) {
-            EasyModel.sync (db, model);
+            ModelType.get(model).sync (db);
         }
         for (var model : models) {
-            EasyModel.syncAssociations (db, model);
+            ModelType.get (model).syncAssociations (db);
         }
     }
 

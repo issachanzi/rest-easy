@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/rest-easy.iml" filepath="$PROJECT_DIR$/.idea/rest-easy.iml" />
+      <module fileurl="file://$PROJECT_DIR$/rest-easy.iml" filepath="$PROJECT_DIR$/rest-easy.iml" />
       <module fileurl="file://$PROJECT_DIR$/rest-easy-demo-app/rest-easy-demo-app.iml" filepath="$PROJECT_DIR$/rest-easy-demo-app/rest-easy-demo-app.iml" />
       <module fileurl="file://$PROJECT_DIR$/rest-easy-test-app/rest-easy-test-app.iml" filepath="$PROJECT_DIR$/rest-easy-test-app/rest-easy-test-app.iml" />
     </modules>

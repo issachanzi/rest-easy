@@ -1,15 +1,21 @@
 package net.issachanzi.resteasy.controller;
 
-import net.issachanzi.resteasy.controller.exception.Forbidden;
-import net.issachanzi.resteasy.controller.exception.HttpErrorStatus;
-import net.issachanzi.resteasy.controller.exception.InternalServerError;
+import jakarta.json.Json;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonStructure;
+import net.issachanzi.resteasy.controller.exception.*;
 import net.issachanzi.resteasy.model.AccessType;
 import net.issachanzi.resteasy.model.EasyModel;
+import net.issachanzi.resteasy.model.ModelType;
+import net.issachanzi.resteasy.model.SqlDatatypes;
 import net.issachanzi.resteasy.view.EasyView;
 
+import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -18,7 +24,8 @@ import java.util.stream.Collectors;
  * A controller for {@link EasyModel} models
  */
 public class EasyController implements Controller {
-    private final Class<? extends EasyModel> modelClazz;
+//    private final Class<? extends EasyModel> modelClazz;
+    private final ModelType modelType;
     private final Connection db;
 
     /**
@@ -31,7 +38,7 @@ public class EasyController implements Controller {
             Class<? extends EasyModel> modelClazz,
             Connection db
     ) {
-        this.modelClazz = modelClazz;
+        this.modelType = ModelType.get (modelClazz);
         this.db = db;
     }
 
@@ -39,8 +46,8 @@ public class EasyController implements Controller {
     @Override
     public String get(String authorization) throws HttpErrorStatus {
         try {
-            var models = EasyModel.all(db, modelClazz).stream().filter(
-                    model -> {
+            var models = EasyModel.all(db, modelType.modelClass())
+                    .stream().filter(model -> {
                         try {
                             return model.authorize(
                                     db,
@@ -70,7 +77,7 @@ public class EasyController implements Controller {
             String authorization
     ) throws HttpErrorStatus {
         try {
-            var models = EasyModel.where(db, params, modelClazz)
+            var models = EasyModel.where(db, params, modelType.modelClass())
                     .stream().filter(model -> {
                         try {
                             return model.authorize(
@@ -93,7 +100,7 @@ public class EasyController implements Controller {
     @Override
     public String get(UUID id, String authorization) throws HttpErrorStatus {
         try {
-            var model = EasyModel.byId(db, id, modelClazz);
+            var model = EasyModel.byId(db, id, modelType.modelClass());
 
             if (!model.authorize(db, authorization, AccessType.READ)) {
                 throw new Forbidden();
@@ -109,7 +116,7 @@ public class EasyController implements Controller {
     @Override
     public String post(String body, String authorization) throws HttpErrorStatus {
         try {
-            var model = EasyModel.fromJson(db, body, modelClazz);
+            var model = modelType.fromJson(db, body);
 
             if (!model.authorize(db, authorization, AccessType.CREATE)) {
                 throw new Forbidden();
@@ -138,10 +145,80 @@ public class EasyController implements Controller {
             String body,
             String authorization
     ) throws HttpErrorStatus {
-        // TODO
-        var ex = new UnsupportedOperationException("Method endpoints not implemented");
-        ex.printStackTrace();
-        throw new InternalServerError(ex);
+        try {
+            var reader = Json.createReader (new StringReader(body));
+            JsonObject bodyJson = reader.readObject();
+            Method customMethod = modelType.customMethod (methodName);
+            EasyModel modelInstance = EasyModel.byId(
+                    db,
+                    id,
+                    modelType.modelClass()
+            );
+
+            if (!modelInstance.authorize(
+                    db,
+                    authorization,
+                    AccessType.CUSTOM_METHOD
+            )) {
+                throw new Forbidden();
+            }
+
+            var requiredParams = customMethod.getParameters();
+            var args = new LinkedList<Object>();
+
+            for (var param : requiredParams) {
+                if (param.getName().equals("authorization")
+                        && param.getType() == String.class) {
+                    args.add (authorization);
+                }
+                else if (param.getType() == Connection.class) {
+                    args.add (db);
+                }
+                else if (!bodyJson.containsKey(param.getName())) {
+                    throw new BadRequest (param.getName() + " is required");
+                }
+                else {
+                    try {
+                        args.add(SqlDatatypes.objectFromJson(
+                                param.getName(),
+                                param.getType(),
+                                db,
+                                bodyJson
+                        ));
+                    } catch (IllegalArgumentException ex) {
+                        throw new InternalServerError(ex);
+                    }
+                }
+            }
+
+            var result = customMethod.invoke (modelInstance, args.toArray());
+
+            if (result instanceof EasyModel) {
+                return new EasyView ((EasyModel) result).toString();
+            }
+            else if (result != null) {
+                return result.toString();
+            }
+            else {
+                return "";
+            }
+
+        }
+        catch (InvocationTargetException ex) {
+            if (ex.getCause() instanceof HttpErrorStatus) {
+                throw (HttpErrorStatus) ex.getCause();
+            }
+            else {
+                throw new BadRequest(ex.getCause());
+            }
+        }
+        catch (
+                IllegalArgumentException |
+                IllegalAccessException |
+                SQLException ex
+        ) {
+            throw new BadRequest(ex);
+        }
     }
 
     @Override
@@ -155,7 +232,7 @@ public class EasyController implements Controller {
     @Override
     public void delete(UUID id, String authorization) throws HttpErrorStatus {
         try {
-            var model = EasyModel.byId(db, id, modelClazz);
+            var model = EasyModel.byId(db, id, modelType.modelClass());
 
             if (!model.authorize(db, authorization, AccessType.DELETE)) {
                 throw new Forbidden();

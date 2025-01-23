@@ -1,10 +1,16 @@
 package net.issachanzi.resteasy.model.association;
 
 import net.issachanzi.resteasy.model.EasyModel;
+import net.issachanzi.resteasy.model.annotation.NoPersist;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.*;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Stack;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * A connection between two EasyModel classes, based on a field in one or both
@@ -25,7 +31,43 @@ import java.sql.SQLException;
  * </code></pre>
  */
 public abstract class Association {
-    private Field field;
+    protected Field field;
+
+    @SuppressWarnings("unchecked")
+    protected static Class <? extends EasyModel> getOtherType(Field field) {
+        Type otherType = getComponentType(field);
+
+        if (EasyModel.class.isAssignableFrom(field.getType())) {
+            return (Class<? extends EasyModel>) field.getType();
+        }
+        else if (otherType == null) {
+            throw new RuntimeException("Type is not valid");
+        }
+
+        return (Class<? extends EasyModel>) otherType;
+    }
+
+    static Class<?> getComponentType(Field field) {
+        Type componentType;
+
+        if (field.getType().isArray()) {
+            componentType = field.getType().componentType();
+        }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            Type type = field.getGenericType();
+            if (type instanceof ParameterizedType pType) {
+                componentType = pType.getActualTypeArguments()[0];
+            }
+            else {
+                throw new RuntimeException("Type is not valid");
+            }
+        }
+        else {
+            componentType = null;
+        }
+
+        return (Class<?>) componentType;
+    }
 
     /**
      * Sets up the database to store the association.
@@ -47,14 +89,79 @@ public abstract class Association {
      *
      * @param db The database connection to use
      * @param model The model instance to populate associations for
-     * @param chainSource Model instance to break recursion on
+     * @param chain Model instances to break recursion on
      * @throws SQLException If a database query fails
      */
     public abstract void load (
             Connection db,
             EasyModel model,
-            EasyModel chainSource
+            Stack<EasyModel> chain
     ) throws SQLException;
+
+    @SuppressWarnings("unchecked")
+    protected void loadManyByUuid(
+        Connection db,
+        EasyModel model,
+        Stack<EasyModel> chain,
+        UUID[] uuids
+    ) throws SQLException {
+        Class<? extends EasyModel> componentType
+            = (Class<? extends EasyModel>) getComponentType(field);
+        if (field.getType().isArray()) {
+
+            Object value = Array.newInstance(componentType, uuids.length);
+            for (int i = 0; i < uuids.length; i++) {
+                EasyModel v = EasyModel.byId (
+                        db,
+                        uuids[i],
+                        componentType,
+                        chain
+                );
+
+                Array.set(value, i, v);
+            }
+
+            try {
+                field.setAccessible(true);
+                field.set(model, value);
+                field.setAccessible(false);
+            } catch (IllegalAccessException | ClassCastException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            try {
+                field.setAccessible(true);
+                var collection
+                        = (Collection<? extends EasyModel>) field.get(model);
+                field.setAccessible(false);
+
+                collection.clear();
+                for (UUID uuid : uuids) {
+                    EasyModel element = EasyModel.byId(
+                            db,
+                            uuid,
+                            componentType,
+                            chain
+                    );
+                    // You can't add anything to a Collection with a wildcard in
+                    // the type parameter, so I have to cast to a raw Collection
+                    ((Collection) collection).add(element);
+
+//                    // I thought I was so clever with this, but it turns out
+                      // that there is a more elegant way of doing this
+//                    Method addMethod = collection
+//                            .getClass()
+//                            .getMethod("add", componentType);
+//                    addMethod.invoke(collection, element);
+                }
+            }
+            catch (IllegalAccessException |
+                   ClassCastException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     /**
      * Saves this association in the database
@@ -82,7 +189,7 @@ public abstract class Association {
             return null;
         }
 
-        boolean isMultiple = field.getType().isArray();
+        boolean isMultiple = isMultiple(field);
         boolean isOtherMultiple = isOtherMultiple (clazz, field);
         if (isMultiple) {
             if (isOtherMultiple) {
@@ -101,9 +208,27 @@ public abstract class Association {
             else if (className.compareTo(otherClassName) <= 0) {
                 return new BelongsTo(clazz, field);
             }
-            else {
+            else if (
+                Arrays.stream(field.getType().getFields())
+                    .anyMatch(f -> f.getType() == clazz)
+            ) {
                 return new HasOne(clazz, field);
             }
+            else {
+                return new BelongsTo (clazz, field);
+            }
+        }
+    }
+
+    private static boolean isMultiple(Field field) {
+        if (field.getType().isArray()) {
+            return true;
+        }
+        else if (Collection.class.isAssignableFrom(field.getType())) {
+            return true;
+        }
+        else {
+            return false;
         }
     }
 
@@ -117,20 +242,41 @@ public abstract class Association {
             return false;
         }
         else {
-            return otherField.getType().isArray();
+            return isMultiple(otherField);
         }
     }
 
-    private static boolean isSupportedAssociation(Field field) {
+    public static boolean isSupportedAssociation(Field field) {
         var fieldType = field.getType();
         if (EasyModel.class.isAssignableFrom(fieldType)) {
             return true;
         }
-        else if (!fieldType.isArray()) {
-            return false;
+        else if (fieldType.isArray()) {
+            return EasyModel.class.isAssignableFrom(fieldType.componentType());
+        }
+        else if (Collection.class.isAssignableFrom(fieldType)) {
+            Type type = field.getGenericType();
+            if (type instanceof ParameterizedType pType) {
+                if (
+                    pType.getActualTypeArguments().length > 0
+                        && pType.getActualTypeArguments() [0] instanceof Class
+                ) {
+                    return (
+                            EasyModel.class.isAssignableFrom(
+                                (Class <?>) pType.getActualTypeArguments()[0]
+                            )
+                    );
+                }
+                else {
+                    return false;
+                }
+            }
+            else {
+                return false;
+            }
         }
         else {
-            return EasyModel.class.isAssignableFrom(fieldType.componentType());
+            return false;
         }
     }
 
@@ -138,15 +284,32 @@ public abstract class Association {
             Class <? extends EasyModel> clazz,
             Field field
     ) {
-        var otherClazz = field.getType();
-        var otherClazzFields = otherClazz.getFields();
+        var otherClazz = getOtherType(field);
+        var otherClazzFields = getFields(otherClazz);
 
         for (var f : otherClazzFields) {
-            if (field.getType () == clazz || f.getType().arrayType() == clazz) {
+            if (f.getType () == clazz || getComponentType(f) == clazz) {
                 return f;
             }
         }
 
         return null;
+    }
+
+    private static Field[] getFields(Class<?> otherClazz) {
+        var publicFields = otherClazz.getFields();
+        var privateFields = Arrays.stream(otherClazz.getDeclaredFields())
+                .filter(field -> (field.getModifiers() & Modifier.PUBLIC) == 0);
+        var fields = Stream.concat(Arrays.stream(publicFields), privateFields)
+                .filter(field -> Arrays.stream(field.getAnnotations())
+                        .noneMatch(
+                                annotation
+                                        -> annotation.annotationType()
+                                        == NoPersist.class
+                        )
+                )
+                .toList()
+                .toArray(new Field [0]);
+        return fields;
     }
 }
