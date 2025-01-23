@@ -208,8 +208,14 @@ public abstract class Association {
             else if (className.compareTo(otherClassName) <= 0) {
                 return new BelongsTo(clazz, field);
             }
-            else {
+            else if (
+                Arrays.stream(field.getType().getFields())
+                    .anyMatch(f -> f.getType() == clazz)
+            ) {
                 return new HasOne(clazz, field);
+            }
+            else {
+                return new BelongsTo (clazz, field);
             }
         }
     }

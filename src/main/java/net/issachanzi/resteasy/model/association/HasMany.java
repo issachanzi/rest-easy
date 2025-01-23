@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Stack;
 import java.util.UUID;
 
@@ -64,15 +65,21 @@ public class HasMany extends Association {
         loadManyByUuid(db, model, chain, uuids);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public void save (Connection db, EasyModel model) throws SQLException {
         try {
             var dao = getDao(db);
+            field.setAccessible(true);
             var value = field.get (model);
+            field.setAccessible(false);
 
             dao.clearAssociationByForeign(model.id);
 
-            if (value != null) {
+            if (value == null) {
+                dao.clearAssociationByForeign(model.id);
+            }
+            else if (value.getClass().isArray()) {
                 int valueLength = Array.getLength(value);
                 for (int i = 0; i < valueLength; i++) {
                     var v = (EasyModel) Array.get(value, i);
@@ -80,8 +87,10 @@ public class HasMany extends Association {
                     dao.setForeignByPrimary(v.id, model.id);
                 }
             }
-            else {
-                dao.clearAssociationByForeign(model.id);
+            else if (Collection.class.isAssignableFrom(value.getClass())) {
+                for (var v : (Collection <? extends EasyModel>) value) {
+                    dao.setForeignByPrimary(v.id, model.id);
+                }
             }
         }
         catch (IllegalAccessException e) {

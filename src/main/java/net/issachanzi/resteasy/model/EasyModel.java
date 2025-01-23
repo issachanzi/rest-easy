@@ -248,14 +248,18 @@ public abstract class EasyModel {
             }
         }
 
-        BasicDao dao = new BasicDao(
-                db,
-                clazz.getSimpleName(),
-                ModelType.get(clazz).columnTypes()
-        );
-        Map<String, Object> fieldValues = dao.select(id);
+        try {
+            BasicDao dao = new BasicDao(
+                    db,
+                    clazz.getSimpleName(),
+                    ModelType.get(clazz).columnTypes()
+            );
+            Map<String, Object> fieldValues = dao.select(id);
 
-        return unfreezeModel(clazz, fieldValues, db, chain);
+            return unfreezeModel(clazz, fieldValues, db, chain);
+        } catch (NoSuchElementException ex) {
+            return null;
+        }
     }
 
     /**

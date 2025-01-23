@@ -5,12 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A data access object for a table representing an EasyModel class
@@ -86,12 +81,16 @@ public class BasicDao {
      * @throws SQLException if the underlying database query encounters an
      *                      error
      */
-    public Map<String, Object> select(UUID id) throws SQLException {
+    public Map<String, Object> select (
+            UUID id
+    ) throws SQLException, NoSuchElementException {
         String whereSql = "id = ?";
         var params = new Object[] {id.toString()};
         var results = this.where(whereSql, params);
 
-        return results.stream().findFirst().get();
+        return results.stream()
+            .findFirst()
+            .orElseThrow(NoSuchElementException::new);
     }
 
     /**

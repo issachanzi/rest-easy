@@ -94,6 +94,9 @@ public class EasyView {
         else if (value.getClass().isArray()) {
             jsonValue = arrayJsonValue(value);
         }
+        else if (Collection.class.isAssignableFrom(value.getClass())) {
+            jsonValue = collectionJsonValue((Collection) value);
+        }
         else if (EasyModel.class.isAssignableFrom(value.getClass())) {
             jsonValue = Json.createValue(((EasyModel) value).id.toString());
         }
@@ -119,6 +122,16 @@ public class EasyView {
         for (int i = 0; i < length; i++) {
             var value = Array.get(values, i);
 
+            builder.add(jsonValue (value));
+        }
+
+        return builder.build();
+    }
+
+    private JsonValue collectionJsonValue (Collection values) {
+        var builder = Json.createArrayBuilder();
+
+        for (Object value : values) {
             builder.add(jsonValue (value));
         }
 
