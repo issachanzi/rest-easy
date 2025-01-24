@@ -16,29 +16,77 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Optional;
 
 /**
  * Main class for a Rest Easy application
  */
 public class RestEasy {
 
-    public static final int LISTEN_PORT = 7070;
+    public static final String DEFAULT_DB_URL = "jdbc:postgresql://localhost:5432/app?user=postgres";
+    public static final int DEFAULT_LISTEN_PORT = 7070;
     public static final String SCHEMA_FILENAME = "schema.json";
+
+    public final int listenPort;
+    public final Connection db;
+
+    /**
+     * Constructs a Rest Easy application
+     *
+     * @throws SQLException if a database access error occurs
+     */
+    public RestEasy () throws SQLException {
+        String dbUrl
+            = Optional.ofNullable (System.getenv("DB_URL"))
+            .orElse(DEFAULT_DB_URL);
+        this.listenPort
+            = Optional.ofNullable (System.getenv("LISTEN_PORT"))
+            .map (Integer::valueOf)
+            .orElse (DEFAULT_LISTEN_PORT);
+        this.db = DriverManager.getConnection(dbUrl);
+    }
+
+    /**
+     * Constructs a Rest Easy application
+     *
+     * @param db The database connection to use
+     */
+    public RestEasy (Connection db) {
+        this.db = db;
+        this.listenPort
+            = Optional.ofNullable (System.getenv("LISTEN_PORT"))
+            .map (Integer::valueOf)
+            .orElse (DEFAULT_LISTEN_PORT);
+    }
+
+    /**
+     * Constructs a Rest Easy application
+     *
+     * @param listenPort The port to listen for HTTP connections on
+     */
+    public RestEasy (int listenPort) throws SQLException {
+        this.listenPort = listenPort;
+        String dbUrl
+                = Optional.ofNullable (System.getenv("DB_URL"))
+                .orElse(DEFAULT_DB_URL);
+        this.db = DriverManager.getConnection(dbUrl);
+    }
 
     /**
      * Starts the Rest Easy application
      *
-     * @param db The database connection to use
      * @throws Exception If an error occurs
      */
-    public void init(Connection db) throws Exception {
+    public void init() throws Exception {
         var models = new Loader ().load();
 
         initSchema (models);
 
         initModel(models, db);
-        initController(models, db);
+        initController(models, db, listenPort);
     }
 
     private void initModel (
@@ -50,9 +98,10 @@ public class RestEasy {
 
     private void initController (
             Collection<Class<? extends EasyModel>> models,
-            Connection db
+            Connection db,
+            int listenPort
     ) throws Exception {
-        var server = new Server(LISTEN_PORT);
+        var server = new Server(listenPort);
         var connector = new ServerConnector (server);
         server.addConnector (connector);
 
