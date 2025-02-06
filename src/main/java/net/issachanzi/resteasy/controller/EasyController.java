@@ -2,7 +2,6 @@ package net.issachanzi.resteasy.controller;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonStructure;
 import net.issachanzi.resteasy.controller.exception.*;
 import net.issachanzi.resteasy.model.AccessType;
 import net.issachanzi.resteasy.model.EasyModel;
@@ -24,8 +23,14 @@ import java.util.stream.Collectors;
  * A controller for {@link EasyModel} models
  */
 public class EasyController implements Controller {
-//    private final Class<? extends EasyModel> modelClazz;
+    /**
+     * The type of model that this controller is for
+     */
     private final ModelType modelType;
+
+    /**
+     * The database connection to use
+     */
     private final Connection db;
 
     /**
