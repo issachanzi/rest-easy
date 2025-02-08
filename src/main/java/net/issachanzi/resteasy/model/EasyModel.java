@@ -5,11 +5,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.*;
 import java.util.*;
 
+import jakarta.annotation.Nullable;
 import net.issachanzi.resteasy.controller.exception.HttpErrorStatus;
 import net.issachanzi.resteasy.model.annotation.NoHttp;
 import net.issachanzi.resteasy.model.annotation.NoPersist;
 import jakarta.json.JsonObject;
-import org.eclipse.jetty.http.ComplianceViolation;
 
 /**
  * Base class for a model in a Rest Easy application
@@ -115,7 +115,7 @@ public abstract class EasyModel {
         var type = field.type();
         var fieldName = field.name();
 
-        return SqlDatatypes.objectFromJson(fieldName, type, db, jsonObject);
+        return DataType.forClass(type).fromJson(fieldName, db, jsonObject);
     }
 
     /**
@@ -126,22 +126,18 @@ public abstract class EasyModel {
      *
      * @param data Field data to update
      */
-    public void update(Map<String, String> data) {
+    public void update(Connection db, JsonObject data) throws HttpErrorStatus {
         for(var fieldName : data.keySet()) {
             try {
                 var clazz = this.getClass();
-                var field = clazz.getField(fieldName);
-                var fieldType = field.getType();
-                var fieldValueStr = data.get(fieldName);
-                var fieldValue = SqlDatatypes.fromString(
-                        fieldValueStr,
-                        fieldType
-                );
+                var rawField = clazz.getField(fieldName);
+                var field = this.modelType.httpField(rawField);
+                var fieldValue = DataType
+                    .forClass(field.type())
+                    .fromJson(fieldName, db, data);
 
-                var httpField = this.modelType.httpField(field);
-                httpField.set(this, fieldValue);
-            } catch (NoSuchFieldException |
-                     HttpErrorStatus ignored) {}
+                field.set(this, fieldValue);
+            } catch (NoSuchFieldException ignored) {}
         }
     }
 
@@ -202,6 +198,7 @@ public abstract class EasyModel {
      * @param <M> The class of the model instance to find
      * @throws SQLException If a database query fails
      */
+    @Nullable
     public static <M extends EasyModel> M byId(
             Connection db,
             UUID id,
@@ -228,11 +225,13 @@ public abstract class EasyModel {
      * @param clazz The class of the model instance to find
      * @param chain Model instance to break recursion on
      *
-     * @return The model instance with the specified id
+     * @return The model instance with the specified id, or {@code null} if
+     * none exists
      * @param <M> The class of the model instance to find
      * @throws SQLException If a database query fails
      */
     @SuppressWarnings("unchecked")
+    @Nullable
     public static <M extends EasyModel> M byId(
             Connection db,
             UUID id,
@@ -333,7 +332,7 @@ public abstract class EasyModel {
                 value = valueStr;
             }
             else {
-                value = SqlDatatypes.fromString(valueStr, type);
+                value = DataType.forClass(type).fromString(valueStr);
             }
 
             filter.put(key, value);
@@ -542,7 +541,7 @@ public abstract class EasyModel {
 
         for (var field : ModelType.get(clazz).httpFields()) {
             String name = field.name();
-            String type = SqlDatatypes.schemaType(field.type());
+            String type = DataType.forClass(field.type()).schemaType();
 
             result.put (name, type);
         }

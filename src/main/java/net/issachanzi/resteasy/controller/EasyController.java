@@ -3,10 +3,7 @@ package net.issachanzi.resteasy.controller;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import net.issachanzi.resteasy.controller.exception.*;
-import net.issachanzi.resteasy.model.AccessType;
-import net.issachanzi.resteasy.model.EasyModel;
-import net.issachanzi.resteasy.model.ModelType;
-import net.issachanzi.resteasy.model.SqlDatatypes;
+import net.issachanzi.resteasy.model.*;
 import net.issachanzi.resteasy.view.EasyView;
 
 import java.io.StringReader;
@@ -184,12 +181,15 @@ public class EasyController implements Controller {
                 }
                 else {
                     try {
-                        args.add(SqlDatatypes.objectFromJson(
-                                param.getName(),
-                                param.getType(),
-                                db,
-                                bodyJson
-                        ));
+                        args.add(
+                            DataType
+                                .forClass(param.getType())
+                                .fromJson(
+                                    param.getName(),
+                                    db,
+                                    bodyJson
+                                )
+                        );
                     } catch (IllegalArgumentException ex) {
                         throw new InternalServerError(ex);
                     }
@@ -228,6 +228,38 @@ public class EasyController implements Controller {
 
     @Override
     public void put(UUID id, String body, String authorization) throws HttpErrorStatus {
+        try {
+            var model = EasyModel.byId(db, id, modelType.modelClass());
+
+            if (model == null) {
+                throw new NotFound();
+            }
+            else if (!model.authorize(db, authorization, AccessType.DELETE)) {
+                throw new Forbidden();
+            }
+
+            var reader = Json.createReader (new StringReader(body));
+            JsonObject bodyJson = reader.readObject();
+
+            model.update(bodyJson);
+
+            boolean isAuthorized = model.authorize (
+                db,
+                authorization,
+                AccessType.UPDATE
+            );
+
+            if (isAuthorized) {
+                model.save(db);
+            }
+            else {
+                throw new Forbidden();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new InternalServerError();
+        }
+
         // TODO
         var ex = new UnsupportedOperationException("Put method not implemented");
         ex.printStackTrace();
@@ -239,7 +271,10 @@ public class EasyController implements Controller {
         try {
             var model = EasyModel.byId(db, id, modelType.modelClass());
 
-            if (!model.authorize(db, authorization, AccessType.DELETE)) {
+            if (model == null) {
+                throw new NotFound();
+            }
+            else if (!model.authorize(db, authorization, AccessType.DELETE)) {
                 throw new Forbidden();
             }
 

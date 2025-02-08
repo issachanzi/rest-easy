@@ -74,7 +74,7 @@ public class ModelType {
             // Static fields are not persistent.
             return false;
         }
-        else if (SqlDatatypes.isPrimitive(field.getType())) {
+        else if (DataType.isPrimitive(field.getType())) {
             return true;
         }
         else if (EasyModel.class.isAssignableFrom(field.getType())) {
@@ -165,7 +165,7 @@ public class ModelType {
 
         for (var field : primitivePersistentFields()) {
             String fieldName = field.getName();
-            String columnType = SqlDatatypes.forClass(field.getType());
+            String columnType = DataType.forClass(field.getType()).sqlType();
 
             result.put(fieldName, columnType);
         }
@@ -178,7 +178,7 @@ public class ModelType {
         var fields = persistentFields();
 
         for (var field : fields) {
-            if (SqlDatatypes.isPrimitive (field.getType())) {
+            if (DataType.isPrimitive (field.getType())) {
                 result.add(field);
             }
         }
