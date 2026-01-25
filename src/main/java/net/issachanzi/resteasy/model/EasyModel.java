@@ -537,13 +537,18 @@ public abstract class EasyModel {
     static Map <String, String> schema (
             Class <? extends EasyModel> clazz
     ) {
+        ModelType modelType = ModelType.get(clazz);
         Map <String, String> result = new HashMap <> ();
 
-        for (var field : ModelType.get(clazz).httpFields()) {
+        for (var field : modelType.httpFields()) {
             String name = field.name();
-            String type = DataType.forClass(field.type()).schemaType();
-
-            result.put (name, type);
+            try {
+                String type = DataType.forClass(field.type()).schemaType();
+                
+                result.put (name, type);
+            } catch (IllegalArgumentException ex) {
+                ex.printStackTrace();
+            }
         }
 
         return result;

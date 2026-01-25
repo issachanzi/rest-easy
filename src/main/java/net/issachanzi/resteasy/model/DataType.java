@@ -2,10 +2,7 @@ package net.issachanzi.resteasy.model;
 
 import jakarta.json.JsonObject;
 
-import java.sql.Connection;
-import java.sql.Date;
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -17,9 +14,40 @@ public class DataType {
         return dataTypes.containsKey (clazz);
     }
 
+    @SuppressWarnings("unchecked")
     public static DataType forClass (Class <?> clazz) {
         if (dataTypes.containsKey(clazz)) {
             return dataTypes.get(clazz);
+        }
+        else if (EasyModel.class.isAssignableFrom(clazz)) {
+            var dataType = new DataType(
+                "char(36)",
+                clazz.getSimpleName(),
+                clazz::equals,
+                null,
+                (
+                        fieldName,
+                        db,
+                        json
+                ) -> {
+                    try {
+                        return EasyModel.byId(
+                            db,
+                            UUID.fromString(json.getString(fieldName)),
+                            (Class<? extends EasyModel>) clazz
+                        );
+                    } catch (SQLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            );
+
+            dataTypes.put(clazz, dataType);
+
+            return dataType;
+        }
+        else if (clazz.isArray()) {
+            return forClass(clazz.componentType());
         }
         else {
             throw new IllegalArgumentException (
@@ -225,7 +253,7 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> new Time (json.getJsonNumber(fieldName).longValue())
+                ) -> new Timestamp (json.getJsonNumber(fieldName).longValue())
             )
         );
     }

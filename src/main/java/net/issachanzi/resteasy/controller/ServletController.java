@@ -169,7 +169,8 @@ public class ServletController extends HttpServlet {
         try {
             if(responseContent != null && !responseContent.isEmpty()) {
                 response.setStatus(200);
-                response.getOutputStream().print(responseContent);
+                response.setCharacterEncoding("UTF-8");
+                response.getWriter().write(responseContent);
             }
             else {
                 response.setStatus(204); // No content

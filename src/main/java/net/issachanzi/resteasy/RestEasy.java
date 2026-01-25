@@ -32,7 +32,8 @@ public class RestEasy {
 
     public final int listenPort;
     public final Connection db;
-
+    private Server server = null;
+    
     /**
      * Constructs a Rest Easy application
      *
@@ -101,7 +102,7 @@ public class RestEasy {
             Connection db,
             int listenPort
     ) throws Exception {
-        var server = new Server(listenPort);
+        this.server = new Server(listenPort);
         var connector = new ServerConnector (server);
         server.addConnector (connector);
 
@@ -142,5 +143,9 @@ public class RestEasy {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
+    }
+    
+    public void stop() throws Exception {
+        this.server.stop();
     }
 }

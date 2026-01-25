@@ -4,7 +4,10 @@ import jakarta.json.Json;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.Time;
@@ -73,9 +76,31 @@ public class Schema {
             String type = modelSchema.get(fieldName);
             boolean isAssociation = false;
             try {
-                isAssociation = EasyModel.class.isAssignableFrom (
-                        model.getDeclaredField(fieldName).getType()
-                );
+                var field = model.getDeclaredField(fieldName);
+                if(EasyModel.class.isAssignableFrom(field.getType())) {
+                    isAssociation = true;
+                }
+                else if (
+                    field.getType().isArray()
+                        && EasyModel.class.isAssignableFrom(
+                            field.getType().arrayType()
+                        )
+                ) {
+                    isAssociation = true;
+                }
+                else if (Collection.class.isAssignableFrom(field.getType())) {
+                    Type genericType = field.getGenericType();
+                    if (genericType instanceof ParameterizedType) {
+                        var typeArgs = ((ParameterizedType) genericType)
+                            .getActualTypeArguments();
+                        if (typeArgs.length == 1
+                            && typeArgs[0] instanceof Class
+                            && EasyModel.class.isAssignableFrom((Class<?>) typeArgs[0])
+                        ) {
+                            isAssociation = true;
+                        }
+                    }
+                }
             } catch (NoSuchFieldException ignored) {}
 
             var fieldSchema = Json.createObjectBuilder();

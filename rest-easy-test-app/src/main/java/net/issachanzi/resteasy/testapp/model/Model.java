@@ -42,12 +42,14 @@ public class Model extends EasyModel {
     public ImplicitOneToOne implicitOneToOne;
     public ImplicitOneToMany [] implicitOneToMany;
 
-    public void string (String string) {
-        this.string = "Custom setter - " + string;
+    public String customAccessorString;
+
+    public void customAccessorString (String string) {
+        this.customAccessorString = "Custom setter - " + string;
     }
 
-    public String string () {
-        return "Custom getter - " + this.string;
+    public String customAccessorString () {
+        return "Custom getter - " + this.customAccessorString;
     }
 
 }

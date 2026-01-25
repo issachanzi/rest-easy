@@ -234,14 +234,14 @@ public class EasyController implements Controller {
             if (model == null) {
                 throw new NotFound();
             }
-            else if (!model.authorize(db, authorization, AccessType.DELETE)) {
+            else if (!model.authorize(db, authorization, AccessType.UPDATE)) {
                 throw new Forbidden();
             }
 
             var reader = Json.createReader (new StringReader(body));
             JsonObject bodyJson = reader.readObject();
 
-            model.update(bodyJson);
+            model.update(db, bodyJson);
 
             boolean isAuthorized = model.authorize (
                 db,
@@ -259,11 +259,7 @@ public class EasyController implements Controller {
             e.printStackTrace();
             throw new InternalServerError();
         }
-
-        // TODO
-        var ex = new UnsupportedOperationException("Put method not implemented");
-        ex.printStackTrace();
-        throw new InternalServerError(ex);
+       
     }
 
     @Override
