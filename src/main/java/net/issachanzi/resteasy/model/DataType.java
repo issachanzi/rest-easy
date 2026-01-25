@@ -11,7 +11,13 @@ public class DataType {
     private static final Map<Class <?>, DataType> dataTypes = new HashMap<> ();
 
     public static boolean isPrimitive (Class <?> clazz) {
-        return dataTypes.containsKey (clazz);
+        try {
+            DataType dt = DataType.forClass(clazz);
+            return dt != null && dt.isPrimitive;
+        }
+        catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -39,7 +45,8 @@ public class DataType {
                     } catch (SQLException e) {
                         throw new RuntimeException(e);
                     }
-                }
+                },
+                false
             );
 
             dataTypes.put(clazz, dataType);
@@ -61,19 +68,22 @@ public class DataType {
     private final MatchesType matchesType;
     private final FromString fromString;
     private final FromJson fromJson;
+    private final boolean isPrimitive;
 
     public DataType (
         String sqlType,
         String schemaType,
         MatchesType matchesType,
         FromString fromString,
-        FromJson fromJson
+        FromJson fromJson,
+        boolean isPrimitive
     ) {
         this.sqlType = sqlType;
         this.schemaType = schemaType;
         this.matchesType = matchesType;
         this.fromString = fromString;
         this.fromJson = fromJson;
+        this.isPrimitive = isPrimitive;
     }
 
     public String sqlType () {
@@ -122,7 +132,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> UUID.fromString(json.getString(fieldName))
+                ) -> UUID.fromString(json.getString(fieldName)),
+                true
             )
         );
         dataTypes.put(
@@ -136,7 +147,8 @@ public class DataType {
                         fieldName,
                         db,
                         json
-                    ) -> json.getString(fieldName)
+                    ) -> json.getString(fieldName),
+                true
             )
         );
         dataTypes.put (
@@ -150,7 +162,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> json.getBoolean(fieldName)
+                ) -> json.getBoolean(fieldName),
+                true
             )
         );
         dataTypes.put(Boolean.class, dataTypes.get (boolean.class));
@@ -165,7 +178,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> json.getInt(fieldName)
+                ) -> json.getInt(fieldName),
+                true
             )
         );
         dataTypes.put (Integer.class, dataTypes.get(int.class));
@@ -180,7 +194,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> json.getJsonNumber(fieldName).longValue()
+                ) -> json.getJsonNumber(fieldName).longValue(),
+                true
             )
         );
         dataTypes.put (Long.class, dataTypes.get(long.class));
@@ -195,7 +210,8 @@ public class DataType {
                         fieldName,
                         db,
                         json
-                ) -> (float) json.getJsonNumber(fieldName).doubleValue()
+                ) -> (float) json.getJsonNumber(fieldName).doubleValue(),
+                true
             )
         );
         dataTypes.put (Float.class, dataTypes.get(float.class));
@@ -210,7 +226,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> json.getJsonNumber(fieldName).doubleValue()
+                ) -> json.getJsonNumber(fieldName).doubleValue(),
+                true
             )
         );
         dataTypes.put (Double.class, dataTypes.get(double.class));
@@ -225,7 +242,8 @@ public class DataType {
                         fieldName,
                         db,
                         json
-                ) -> new Date (json.getJsonNumber(fieldName).longValue())
+                ) -> new Date (json.getJsonNumber(fieldName).longValue()),
+                true
             )
         );
         dataTypes.put (
@@ -239,7 +257,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> new Time (json.getJsonNumber(fieldName).longValue())
+                ) -> new Time (json.getJsonNumber(fieldName).longValue()),
+                true
             )
         );
         dataTypes.put(
@@ -253,7 +272,8 @@ public class DataType {
                     fieldName,
                     db,
                     json
-                ) -> new Timestamp (json.getJsonNumber(fieldName).longValue())
+                ) -> new Timestamp (json.getJsonNumber(fieldName).longValue()),
+                true
             )
         );
     }

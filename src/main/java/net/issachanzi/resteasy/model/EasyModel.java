@@ -418,6 +418,9 @@ public abstract class EasyModel {
                 if (field == null) {
                     continue;
                 }
+                if  (EasyModel.class.isAssignableFrom(field.getType())) {
+                    continue;
+                }
                 var value = fieldValues.get(fieldName);
 
                 // Special case for UUID
@@ -523,7 +526,15 @@ public abstract class EasyModel {
      * Gets a Map of fields in this model exposed via the REST API with, if
      * they represent an association with another model, the name of the other
      * model.
+     *Database startup error:
      *
+     * Error: Error while decrypting the ciphertext provided to safeStorage.decryptString.
+     *     at getSQLKey ([REDACTED]/app/main.main.js:1250:39)
+     *     at initializeSQL ([REDACTED]/app/main.main.js:1342:11)
+     *     at EventEmitter.<anonymous> ([REDACTED]/app/main.main.js:1590:20)
+     *
+     * App Version: 7.85.0
+     * OS: linux
      * <p>
      *     This is planned to be used for a frontend JavaScript library to
      *     abstract REST API requests for Rest Easy applications.
